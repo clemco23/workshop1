@@ -80,6 +80,12 @@ const paths = {
       <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
     </>
   ),
+  video: (
+    <>
+      <rect x="3" y="5" width="13" height="14" rx="2" />
+      <path d="M16 10l5-3v10l-5-3z" />
+    </>
+  ),
   image: (
     <>
       <rect x="3" y="4" width="18" height="16" rx="2" />

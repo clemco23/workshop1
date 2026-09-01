@@ -46,7 +46,7 @@ function Ligne({ label, hint, children }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-2">
       <dt className="text-sm text-slate-500">{label}</dt>
-      <dd className="text-right text-sm font-medium text-slate-900">
+      <dd className="min-w-0 text-right text-sm font-medium break-words text-slate-900">
         {children}
         {hint && <span className="ml-1.5 text-xs font-normal text-slate-400">{hint}</span>}
       </dd>
@@ -183,10 +183,12 @@ function MissionDetail() {
           </dl>
         </Card>
 
-        <div className="grid gap-4 lg:col-span-2">
+        <div className="grid min-w-0 gap-4 lg:col-span-2">
           <Card title="Note" subtitle="Champ libre de la mission">
             {mission.note ? (
-              <p className="text-sm whitespace-pre-line text-slate-600">{mission.note}</p>
+              <p className="text-sm break-words whitespace-pre-line text-slate-600">
+                {mission.note}
+              </p>
             ) : (
               <p className="text-sm text-slate-400">Aucune note sur cette mission.</p>
             )}

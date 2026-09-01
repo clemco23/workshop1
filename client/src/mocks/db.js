@@ -283,6 +283,10 @@ export const documents = [
   },
 ]
 
+// `medias` n'existe pas encore cote schema : `projet.lien_video` y est un String
+// requis et unique. Le champ anticipe la table `projet_media` (type, url |
+// fichier_path, titre, ordre) et le client le lit via `mediasProjet()`, qui
+// retombe sur `lienVideo` quand il est absent — d'ou des fiches des deux formes.
 export const projets = [
   {
     id: P(1),
@@ -293,6 +297,11 @@ export const projets = [
     tag: 'PRO',
     date: jour(-10, 21),
     lienVideo: 'https://vimeo.com/000000001',
+    medias: [
+      { type: 'VIDEO', url: 'https://vimeo.com/000000001', titre: 'Captation integrale' },
+      { type: 'IMAGE', url: 'https://images.example.com/lys-plateau.jpg', titre: 'Plateau' },
+      { type: 'PDF', url: 'https://files.example.com/lys-dossier-presse.pdf', titre: 'Dossier de presse' },
+    ],
     createdAt: jour(-10, 25),
   },
   {
@@ -315,6 +324,11 @@ export const projets = [
     tag: 'PRO',
     date: jour(-2, 10),
     lienVideo: 'https://vimeo.com/000000003',
+    medias: [
+      { type: 'VIDEO', url: 'https://vimeo.com/000000003' },
+      // Sans `type` : il est devine a l'URL par typeMediaDepuisUrl().
+      { url: 'https://www.radio-ouest.example/article-doc-12min', titre: "L'article" },
+    ],
     createdAt: jour(-2, 14),
   },
   {
@@ -326,6 +340,10 @@ export const projets = [
     tag: 'PERSONAL',
     date: jour(-6, 8),
     lienVideo: 'https://vimeo.com/000000004',
+    medias: [
+      { type: 'IMAGE', url: 'https://images.example.com/essai-led-01.jpg', titre: 'LED 3200K' },
+      { type: 'IMAGE', url: 'https://images.example.com/essai-led-02.jpg', titre: 'LED 5600K' },
+    ],
     createdAt: jour(-6, 9),
   },
   {

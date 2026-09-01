@@ -26,7 +26,7 @@ function MissionDocuments({ documents }) {
 
         return (
           <li key={document.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-            <span className="rounded-lg bg-slate-100 p-1.5 text-slate-500">
+            <span className="shrink-0 rounded-lg bg-slate-100 p-1.5 text-slate-500">
               <Icon name="documents" className="size-4" />
             </span>
 
@@ -37,7 +37,9 @@ function MissionDocuments({ documents }) {
               </p>
             </div>
 
-            <Badge tone={categorie.tone}>{categorie.label}</Badge>
+            <Badge tone={categorie.tone} className="shrink-0">
+              {categorie.label}
+            </Badge>
           </li>
         )
       })}

@@ -63,12 +63,19 @@ export async function fetchPortfolioPublic(slug) {
     slug: portfolio.slug,
     titrePage: portfolio.titrePage,
     auteur: `${user.firstName} ${user.lastName}`, // pas d'email en public
-    projets: projetsDuPortfolio(portfolio.id).map(({ titre, description, date, lienVideo, tag }) => ({
-      titre,
-      description,
-      date,
-      lienVideo,
-      tag,
-    })),
+    // Projection explicite : la page publique ne recoit que ces champs, jamais
+    // la ligne complete (pas d'id, pas de mission, pas d'email).
+    // `medias` suit la meme regle des que la table `projet_media` existera —
+    // cf. src/lib/medias.js.
+    projets: projetsDuPortfolio(portfolio.id).map(
+      ({ titre, description, date, lienVideo, medias, tag }) => ({
+        titre,
+        description,
+        date,
+        lienVideo,
+        medias,
+        tag,
+      }),
+    ),
   }
 }

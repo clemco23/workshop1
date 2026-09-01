@@ -71,6 +71,14 @@ Tout l'habillage passe par trois choses, à réutiliser au lieu de recréer du s
   celles du template Vite et ne servent pas à l'UI.
 - **Rythme** : chaque page commence par `<PageHeader>`, les grilles utilisent
   `gap-4`, les cartes `rounded-xl border border-slate-200 bg-white`.
+- **Débordement horizontal** : un enfant de `grid`/`flex` a `min-width: auto`, donc un
+  contenu large (URL insécable, table en `min-w-[…]` dans un `overflow-x-auto`) élargit
+  la colonne et fait scroller la page entière au lieu d'être coupé. Toute colonne de
+  grille qui contient du texte libre ou une table porte donc `min-w-0`, le texte long
+  `truncate` (sur un élément `block`, jamais un `<a>` inline) ou `break-words`, et les
+  éléments qui ne doivent pas se comprimer (icône, badge) `shrink-0`. `Card` et `Select`
+  portent déjà `min-w-0` (et le `<select>` `w-full`, sinon il se dimensionne sur son
+  option la plus longue) : c'est ce qui manquait et faisait scroller la fiche projet.
 
 ## Layout
 
@@ -252,12 +260,22 @@ futur layout parent ne soit pas remonté à chaque navigation.
   route publique, elle tape `/api/public/portfolio/:slug` et ne doit ni charger le client
   Supabase ni attendre une session.
 - Le layout partagé existe (voir section Layout), mais seuls **`Dashboard`,
-  `Missions`, `MissionDetail` et `Documents`** ont du contenu : les autres pages renvoient encore `null` et
+  `Missions`, `MissionDetail`, `Documents`, `Projets` et `ProjetDetail`** ont du contenu :
+  les autres pages renvoient encore `null` et
   s'affichent donc comme une zone vide dans la coquille. `/login`, `/signup`, `/verify-code`, `/portfolio/:slug` et la 404
   sont volontairement hors du layout.
 - Le Dashboard et Missions lisent encore les **mocks** (`VITE_USE_MOCKS`), voir *Données & API* :
   le back n'expose que `/api/health`, l'endpoint `GET /api/dashboard`
   (`{ user, configSeuil, missions, documents }`) reste à écrire.
+- **Médias d'une fiche projet** : une réalisation se montre avec une vidéo, des images,
+  un PDF ou un lien, mais le schéma n'a que `projet.lien_video` (`String` requis, unique).
+  Le client passe donc partout par `mediasProjet()` (`src/lib/medias.js`), qui rend déjà
+  une *liste* typée (`VIDEO` / `IMAGE` / `PDF` / `LIEN`) et retombe sur `lienVideo`
+  quand le champ `medias` est absent. Côté serveur, la suite est une table
+  `projet_media` (`projet_id`, `type`, `url` | `fichier_path`, `titre`, `ordre`) —
+  **pas** un `projet_id` sur `document` : `document` est le coffre privé des
+  justificatifs et `/portfolio/:slug` est public. Quand l'API renverra `medias`,
+  seule cette fonction change.
 - **Aucun `errorElement`** sur les routes : tant que les mocks servent les données le
   `loader` ne peut pas échouer, mais dès le branchement sur l'API une erreur réseau
   affichera l'écran d'erreur par défaut de react-router. À ajouter avec la garde d'auth.

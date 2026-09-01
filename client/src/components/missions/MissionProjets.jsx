@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
 import Badge from '../ui/Badge.jsx'
-import Icon from '../ui/Icon.jsx'
 import EmptyState from '../ui/EmptyState.jsx'
 import { PROJET_TAG, enumMeta } from '../../lib/enums.js'
 import { formatDate } from '../../lib/format.js'
+import { mediasProjet } from '../../lib/medias.js'
 
 // Fiches projet issues de cette mission (projet.mission_id, nullable : un projet
 // perso n'en a pas).
@@ -38,20 +38,11 @@ function MissionProjets({ projets }) {
               </p>
             </div>
 
-            <Badge tone={tag.tone}>{tag.label}</Badge>
+            <span className="text-xs whitespace-nowrap text-slate-400">
+              {mediasProjet(projet).length} media(s)
+            </span>
 
-            {projet.lienVideo && (
-              <a
-                href={projet.lienVideo}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded p-1 text-slate-400 transition-colors hover:text-brand-700"
-                title="Ouvrir la video"
-              >
-                <Icon name="lien" className="size-4" />
-                <span className="sr-only">Ouvrir la video de {projet.titre}</span>
-              </a>
-            )}
+            <Badge tone={tag.tone}>{tag.label}</Badge>
           </li>
         )
       })}
