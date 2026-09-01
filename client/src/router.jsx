@@ -3,7 +3,13 @@ import AppLayout from './components/layout/AppLayout.jsx'
 
 // `lazy` du data router : le chunk de la route est charge pendant la navigation,
 // avant le rendu — pas de Suspense fallback ni de flash d'ecran vide.
-const page = (loader) => async () => ({ Component: (await loader()).default })
+// Le module de page peut exporter un `loader` nomme a cote de son composant par
+// defaut : il est alors branche sur la route et ses donnees sont pretes avant
+// le premier rendu (pas d'etat de chargement a gerer dans la page).
+const page = (importer) => async () => {
+  const mod = await importer()
+  return { Component: mod.default, loader: mod.loader }
+}
 
 export const router = createBrowserRouter([
   { path: '/login', lazy: page(() => import('./pages/Login.jsx')) },

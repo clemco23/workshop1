@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLoaderData } from 'react-router-dom'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import StatCard from '../components/ui/StatCard.jsx'
 import Card from '../components/ui/Card.jsx'
@@ -6,51 +6,37 @@ import Badge from '../components/ui/Badge.jsx'
 import Button from '../components/ui/Button.jsx'
 import ProgressBar from '../components/ui/ProgressBar.jsx'
 import Icon from '../components/ui/Icon.jsx'
+import EmptyState from '../components/ui/EmptyState.jsx'
+import { fetchDashboard } from '../api/dashboard.js'
+import { computeDashboard, heuresMission, toneSeuil } from '../lib/dashboard.js'
+import { DOCUMENT_CATEGORIE, MISSION_STATUT, MISSION_TYPE, enumMeta } from '../lib/enums.js'
+import {
+  formatEuros,
+  formatHeures,
+  formatMois,
+  formatPeriode,
+  formatTaille,
+} from '../lib/format.js'
 
-// --- Donnees factices : a remplacer par les appels a VITE_API_URL. -----------
-const stats = {
-  heures: { faites: 128, seuil: 150 },
-  ca: { mois: 4250, trend: 12 },
-  missionsEnCours: 3,
+// Charge par le data router avant le rendu (voir le helper `page` de router.jsx).
+export async function loader() {
+  return fetchDashboard()
 }
-
-const missions = [
-  { id: '1', titre: 'Refonte site vitrine', client: 'Atelier Nord', heures: 42, statut: 'en_cours' },
-  { id: '2', titre: 'App mobile — MVP', client: 'Groupe Vela', heures: 31, statut: 'en_cours' },
-  { id: '3', titre: 'Audit accessibilite', client: 'Mairie de Lys', heures: 12, statut: 'en_attente' },
-  { id: '4', titre: 'Maintenance API', client: 'Sowen', heures: 43, statut: 'termine' },
-]
-
-const repartition = [
-  { client: 'Atelier Nord', heures: 42 },
-  { client: 'Sowen', heures: 43 },
-  { client: 'Groupe Vela', heures: 31 },
-  { client: 'Mairie de Lys', heures: 12 },
-]
-// ---------------------------------------------------------------------------
-
-const statuts = {
-  en_cours: { label: 'En cours', tone: 'brand' },
-  en_attente: { label: 'En attente', tone: 'warning' },
-  termine: { label: 'Termine', tone: 'success' },
-}
-
-const euros = new Intl.NumberFormat('fr-FR', {
-  style: 'currency',
-  currency: 'EUR',
-  maximumFractionDigits: 0,
-})
 
 function Dashboard() {
-  const { heures, ca, missionsEnCours } = stats
-  const ratio = heures.faites / heures.seuil
-  const totalHeures = repartition.reduce((acc, r) => acc + r.heures, 0)
+  const data = useLoaderData()
+  const { configSeuil } = data
+  const { seuil, ca, missions, repartition, documentsRecents } = computeDashboard(data)
+  const totalRepartition = repartition.reduce((acc, ligne) => acc + ligne.heures, 0)
 
   return (
     <>
-      <PageHeader title="Dashboard" subtitle="Vue d'ensemble du mois en cours">
-        <Button as={Link} to="/missions" variant="secondary">
-          Voir les missions
+      <PageHeader
+        title="Dashboard"
+        subtitle={`Fenetre glissante de ${seuil.fenetreMois} mois — depuis ${formatMois(seuil.debut)}`}
+      >
+        <Button as={Link} to="/parametres" variant="secondary">
+          Seuils
         </Button>
         <Button as={Link} to="/missions">
           <Icon name="plus" className="size-4" />
@@ -60,33 +46,34 @@ function Dashboard() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
-          label="Heures ce mois"
-          value={heures.faites}
-          unit={`/ ${heures.seuil} h`}
+          label="Heures d'intermittence"
+          value={formatHeures(seuil.heures)}
+          unit={`/ ${seuil.objectif} h`}
           icon="clock"
-          hint={`${Math.round(ratio * 100)} % du seuil`}
+          hint={
+            seuil.restant > 0 ? `${formatHeures(seuil.restant)} h avant le seuil` : 'Seuil atteint'
+          }
         >
           <ProgressBar
-            value={heures.faites}
-            max={heures.seuil}
-            tone={ratio >= 1 ? 'danger' : ratio >= 0.8 ? 'warning' : 'brand'}
-            label="Progression des heures du mois"
+            value={seuil.heures}
+            max={seuil.objectif}
+            tone={toneSeuil(seuil.ratio)}
+            label="Progression vers le seuil d'intermittence"
           />
         </StatCard>
 
         <StatCard
           label="CA du mois"
-          value={euros.format(ca.mois)}
+          value={formatEuros(ca.mois)}
           icon="euro"
-          trend={ca.trend}
-          hint="vs mois dernier"
+          hint={`${formatEuros(ca.moisPrecedent)} le mois dernier`}
         />
 
         <StatCard
-          label="Missions en cours"
-          value={missionsEnCours}
+          label="Missions confirmees"
+          value={missions.confirmees}
           icon="missions"
-          hint="sur 4 missions actives"
+          hint={`${missions.proposees} proposee(s) — ${missions.aVenir} a venir`}
         />
       </div>
 
@@ -94,7 +81,7 @@ function Dashboard() {
         <Card
           className="lg:col-span-2"
           title="Dernieres missions"
-          subtitle="Mise a jour il y a quelques minutes"
+          subtitle={`${missions.total} missions au total`}
           action={
             <Button as={Link} to="/missions" variant="ghost" size="sm">
               Tout voir
@@ -102,44 +89,100 @@ function Dashboard() {
           }
           padded={false}
         >
-          <ul className="divide-y divide-slate-100">
-            {missions.map((mission) => {
-              const statut = statuts[mission.statut]
+          {missions.recentes.length === 0 ? (
+            <EmptyState
+              icon="missions"
+              title="Aucune mission"
+              description="Les missions ajoutees apparaitront ici."
+            />
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {missions.recentes.map((mission) => {
+                const statut = enumMeta(MISSION_STATUT, mission.statut)
+                const type = enumMeta(MISSION_TYPE, mission.type)
 
-              return (
-                <li key={mission.id}>
-                  <Link
-                    to={`/missions/${mission.id}`}
-                    className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-slate-50"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-slate-900">{mission.titre}</p>
-                      <p className="truncate text-xs text-slate-500">{mission.client}</p>
-                    </div>
-                    <span className="text-sm text-slate-500 tabular-nums">{mission.heures} h</span>
-                    <Badge tone={statut.tone}>{statut.label}</Badge>
-                    <Icon name="chevronRight" className="size-4 text-slate-300" />
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
+                return (
+                  <li key={mission.id}>
+                    <Link
+                      to={`/missions/${mission.id}`}
+                      className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-slate-50"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-slate-900">
+                          {mission.clientProduction}
+                        </p>
+                        <p className="truncate text-xs text-slate-500">
+                          {type.label} — {formatPeriode(mission.dateDebut, mission.dateFin)}
+                        </p>
+                      </div>
+                      <span className="hidden text-sm text-slate-500 tabular-nums sm:inline">
+                        {formatHeures(heuresMission(mission, configSeuil.heuresJourDefaut))} h
+                      </span>
+                      <span className="hidden text-sm text-slate-500 tabular-nums md:inline">
+                        {formatEuros(mission.montantHt)}
+                      </span>
+                      <Badge tone={statut.tone}>{statut.label}</Badge>
+                      <Icon name="chevronRight" className="size-4 text-slate-300" />
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
         </Card>
 
-        <Card title="Repartition par client" subtitle={`${totalHeures} h au total`}>
+        <Card
+          title="Repartition par client"
+          subtitle={`${formatHeures(totalRepartition)} h sur la fenetre`}
+        >
           <ul className="flex flex-col gap-4">
-            {repartition.map((ligne) => (
+            {repartition.slice(0, 5).map((ligne) => (
               <li key={ligne.client}>
                 <div className="mb-1.5 flex items-baseline justify-between gap-2 text-sm">
                   <span className="truncate text-slate-700">{ligne.client}</span>
-                  <span className="text-slate-500 tabular-nums">{ligne.heures} h</span>
+                  <span className="text-slate-500 tabular-nums">
+                    {formatHeures(ligne.heures)} h
+                  </span>
                 </div>
-                <ProgressBar value={ligne.heures} max={totalHeures} label={ligne.client} />
+                <ProgressBar value={ligne.heures} max={totalRepartition} label={ligne.client} />
               </li>
             ))}
           </ul>
         </Card>
       </div>
+
+      <Card
+        className="mt-4"
+        title="Documents recents"
+        action={
+          <Button as={Link} to="/documents" variant="ghost" size="sm">
+            Tout voir
+          </Button>
+        }
+        padded={false}
+      >
+        <ul className="divide-y divide-slate-100">
+          {documentsRecents.map((document) => {
+            const categorie = enumMeta(DOCUMENT_CATEGORIE, document.categorie)
+
+            return (
+              <li
+                key={document.id}
+                className="flex items-center gap-4 px-5 py-3 text-sm text-slate-500"
+              >
+                <Icon name="documents" className="size-4 text-slate-400" />
+                <span className="min-w-0 flex-1 truncate font-medium text-slate-900">
+                  {document.nomOriginal}
+                </span>
+                <span className="hidden tabular-nums sm:inline">
+                  {formatTaille(document.taille)}
+                </span>
+                <Badge tone={categorie.tone}>{categorie.label}</Badge>
+              </li>
+            )
+          })}
+        </ul>
+      </Card>
     </>
   )
 }
