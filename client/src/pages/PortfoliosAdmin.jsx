@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useLoaderData } from 'react-router-dom'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Card from '../components/ui/Card.jsx'
@@ -5,6 +6,7 @@ import Button from '../components/ui/Button.jsx'
 import Badge from '../components/ui/Badge.jsx'
 import Icon from '../components/ui/Icon.jsx'
 import EmptyState from '../components/ui/EmptyState.jsx'
+import PortfolioFormModal from '../components/portfolios/PortfolioFormModal.jsx'
 import { fetchPortfolios } from '../api/portfolios.js'
 import { formatDate } from '../lib/format.js'
 
@@ -14,6 +16,7 @@ export async function loader() {
 
 function PortfoliosAdmin() {
   const { portfolios } = useLoaderData()
+  const [creation, setCreation] = useState(false)
 
   return (
     <>
@@ -21,12 +24,19 @@ function PortfoliosAdmin() {
         title="Portfolios"
         subtitle={`${portfolios.length} page(s) publique(s) — une selection ordonnee de fiches projet`}
       >
-        {/* POST /api/portfolios n'existe pas encore. */}
-        <Button disabled title="Creation a venir">
+        <Button onClick={() => setCreation(true)}>
           <Icon name="plus" className="size-4" />
           Nouvelle page
         </Button>
       </PageHeader>
+
+      {/* Le slug est unique en base : la liste chargee sert a signaler la
+          collision avant l'aller-retour serveur. */}
+      <PortfolioFormModal
+        ouvert={creation}
+        onClose={() => setCreation(false)}
+        slugsExistants={portfolios.map((p) => p.slug)}
+      />
 
       {portfolios.length === 0 ? (
         <Card>
