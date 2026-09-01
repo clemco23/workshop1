@@ -30,96 +30,132 @@ enum ProjectTag {
   PERSONAL
 }
 
-enum ProjectVisibility {
-  PUBLIC
-  PRIVATE
+model User {
+  id         String   @id @default(uuid())
+  firstName  String   @map("first_name")
+  lastName   String   @map("last_name")
+  email      String   @unique
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  missions   Mission[]
+  documents  Document[]
+  projects   Project[]
+  settings   ConfigSeuil?
+  portfolios PortfolioPublic?
+  codes      Code[]
+
+  @@map("users")
 }
 
-model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  fullName  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model ConfigSeuil {
+  id                  String   @id @default(uuid())
+  userId              String   @unique @map("user_id")
+  seuilHeuresAnnuel   Int      @default(507) @map("seuil_heures_annuel")
+  heuresJourDefaut    Decimal  @default(8) @map("heures_jour_defaut")
+  fenetreMois         Int      @default(12) @map("fenetre_mois")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
-  missions  Mission[]
-  documents Document[]
-  projects  Project[]
-  settings  AppSetting[]
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("config_seuil")
 }
 
 model Mission {
-  id          String         @id @default(uuid())
-  title       String
-  clientName  String
-  production  String?
-  type        MissionType
-  status      MissionStatus  @default(PROPOSED)
-  startDate   DateTime
-  endDate     DateTime?
-  hours       Int?
-  dailyHours  Int            @default(8)
-  amountHt    Decimal?       @db.Decimal(12, 2)
-  workingDays Int?
-  notes       String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id             String        @id @default(uuid())
+  userId         String        @map("user_id")
+  clientProduction String       @map("client_production")
+  type           MissionType
+  dateDebut      DateTime      @map("date_debut")
+  dateFin        DateTime?     @map("date_fin")
+  statut         MissionStatus @default(PROPOSED)
+  heures         Decimal?      @db.Decimal(6, 2)
+  montantHt      Decimal?      @db.Decimal(10, 2) @map("montant_ht")
+  nbJours        Decimal?      @db.Decimal(5, 2) @map("nb_jours")
+  note           String?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  userId     String
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  documents  Document[]
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents Document[]
+  projects  Project[]
 
-  @@index([userId, type, status])
-  @@index([startDate, endDate])
+  @@index([userId, type])
+  @@index([dateDebut, dateFin])
+  @@map("mission")
 }
 
 model Document {
-  id           String          @id @default(uuid())
-  fileName     String
-  originalName String
-  mimeType     String
-  fileUrl      String
-  category     DocumentCategory @default(OTHER)
-  isGlobal     Boolean         @default(false)
-  createdAt    DateTime        @default(now())
+  id           String            @id @default(uuid())
+  userId       String            @map("user_id")
+  missionId    String?           @map("mission_id")
+  categorie    DocumentCategory
+  fichierPath  String            @map("fichier_path")
+  nomOriginal  String            @map("nom_original")
+  taille       Int
+  mimeType     String            @map("mime_type")
+  uploadedAt   DateTime          @default(now()) @map("uploaded_at")
 
-  userId       String
-  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  missionId    String?
-  mission      Mission?        @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mission Mission? @relation(fields: [missionId], references: [id], onDelete: SetNull)
 
-  @@index([userId, missionId])
-  @@index([category])
+  @@index([missionId])
+  @@map("document")
 }
 
 model Project {
-  id          String          @id @default(uuid())
-  title       String
+  id          String      @id @default(uuid())
+  userId      String      @map("user_id")
+  missionId   String?     @map("mission_id")
+  titre       String
   description String?
-  tag         ProjectTag      @default(PRO)
-  visibility  ProjectVisibility @default(PRIVATE)
-  projectDate DateTime?
-  videoUrl    String
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  tag         ProjectTag
+  date        DateTime
+  lienVideo   String      @map("lien_video")
+  createdAt   DateTime    @default(now()) @map("created_at")
 
-  userId      String
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mission     Mission?  @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  portfolioLinks PortfolioPublicProjet[]
 
-  @@index([userId, visibility, tag])
+  @@map("projet")
 }
 
-model AppSetting {
+model PortfolioPublic {
   id          String   @id @default(uuid())
-  key         String   @unique
-  value       String
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  userId      String   @unique @map("user_id")
+  slug        String   @unique
+  titrePage   String?  @map("titre_page")
+  actif       Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects PortfolioPublicProjet[]
 
-  @@index([userId, key])
+  @@map("portfolio_public")
+}
+
+model PortfolioPublicProjet {
+  id                 String @id @default(uuid())
+  portfolioPublicId  String @map("portfolio_public_id")
+  projetId           String @map("projet_id")
+  ordre              Int
+
+  portfolioPublic PortfolioPublic @relation(fields: [portfolioPublicId], references: [id], onDelete: Cascade)
+  projet          Project         @relation(fields: [projetId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioPublicId, projetId])
+  @@map("portfolio_public_projet")
+}
+
+model Code {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  code      String
+  expireAt  DateTime @map("expire_at")
+  used      Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("codes")
 }
