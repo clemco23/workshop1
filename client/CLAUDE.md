@@ -41,13 +41,170 @@ client/
     main.jsx          # bootstrap React
     App.jsx           # composant racine : rend <RouterProvider router={router} />
     router.jsx        # définition de toutes les routes (createBrowserRouter)
-    index.css         # styles globaux + Tailwind
-    pages/            # un composant par route, encore vides (return null)
+    index.css         # Tailwind + tokens du design system (@theme)
+    api/              # instance axios + un module par ressource
+    lib/              # cn, format, enums, dérivations métier
+    mocks/            # données simulées, à la forme du JSON de l'API
+    components/
+      ui/             # primitives réutilisables (Card, Button, Badge, Icon, …)
+      layout/         # AppLayout, Sidebar, Topbar, navItems.js
+    pages/            # un composant par route (Dashboard et Missions sont remplis)
     assets/           # images importées par le code (hero.png, logos)
 ```
 
+## Design system
+
+Tout l'habillage passe par trois choses, à réutiliser au lieu de recréer du style :
+
+- **Tokens** dans `src/index.css`, bloc `@theme` : la palette d'accent est exposée
+  comme `brand-50 … brand-700` (indigo par défaut). Utiliser `bg-brand-600`,
+  `text-brand-700`, etc. — **jamais** `indigo-*` en dur, pour qu'un changement
+  d'accent reste un changement d'une seule couleur dans ce fichier. Le reste de la
+  palette est `slate-*` (fond `slate-50`, surfaces blanches, bordures `slate-200`,
+  texte `slate-900` / `slate-500`).
+- **Primitives** dans `src/components/ui/` : `Card`, `StatCard`, `Button`, `Badge`,
+  `ProgressBar`, `PageHeader`, `EmptyState`, `Icon`, `Tabs`, `Select`. Un fichier par composant,
+  `export default`, `className` accepté en dernier pour surcharger, fusion via
+  `cn()` (`src/lib/cn.js`). `Button` prend `as` (`<Button as={Link} to="…">`).
+  `Icon` porte un dictionnaire de tracés SVG 24×24 en `currentColor` : ajouter une
+  icône = ajouter une entrée dans `paths`. Les icônes de `public/icons.svg` sont
+  celles du template Vite et ne servent pas à l'UI.
+- **Rythme** : chaque page commence par `<PageHeader>`, les grilles utilisent
+  `gap-4`, les cartes `rounded-xl border border-slate-200 bg-white`.
+
+## Layout
+
+`src/components/layout/AppLayout.jsx` est monté comme route parente (`element`) de
+toutes les routes authentifiées et rend `<Outlet />` — les pages ne rendent que leur
+contenu, jamais la nav. Sidebar fixe à partir de `md`, tiroir avec overlay en dessous ;
+la topbar est collante et affiche le titre de la section courante.
+
+La navigation est déclarée une seule fois dans `layout/navItems.js`
+(`navItems`, `navItemsSecondary`, `currentNavTitle`) : ajouter une entrée d'onglet
+se fait là, pas dans `Sidebar.jsx`.
+
 Les SVG d'icônes sont dans `public/icons.svg` et référencés par `<use href="/icons.svg#id">`,
 pas importés.
+
+## Données & API
+
+La source de vérité du modèle est `../server/prisma/schema.prisma`. Le client s'y cale :
+
+- **Formes** : l'API renvoie du camelCase (`client_production` → `clientProduction`),
+  les enums en **chaînes** (`'CONFIRMED'`, `'INTERMITTENCE'`) et — piège — les
+  `Decimal` Prisma en **chaînes** (`'40.00'`, pas `40`). D'où `num()` dans
+  `src/lib/format.js`, à passer sur tout champ décimal avant calcul ou affichage.
+- **Enums** : `src/lib/enums.js` duplique les quatre enums du schéma
+  (`MissionType`, `MissionStatus`, `DocumentCategory`, `ProjectTag`) avec leur
+  libellé FR et leur `tone` de `Badge`. Modifier un enum côté serveur impose de
+  mettre ce fichier à jour ; `enumMeta()` évite le crash en affichant la valeur
+  brute si le client est en retard.
+- **Appels** : `src/api/client.js` expose l'instance axios (`baseURL:
+  VITE_API_URL`), le drapeau `USE_MOCKS` et `notFound()`. Un module par ressource
+  dans `src/api/`, qui renvoie le mock ou tape l'API selon ce drapeau — les pages
+  ne connaissent ni axios ni les mocks. Chaque fonction porte en commentaire le
+  contrat de l'endpoint qu'elle attend côté serveur :
+
+  | Module            | Fonctions                                                  |
+  | ----------------- | ---------------------------------------------------------- |
+  | `dashboard.js`    | `fetchDashboard()`                                         |
+  | `missions.js`     | `fetchMissions(filtres)`, `fetchMission(id)`               |
+  | `documents.js`    | `fetchDocuments(filtres)`                                  |
+  | `projets.js`      | `fetchProjets(filtres)`, `fetchProjet(id)`                  |
+  | `portfolios.js`   | `fetchPortfolios()`, `fetchPortfolio(id)`, `fetchPortfolioPublic(slug)` |
+  | `compte.js`       | `fetchProfil()`, `fetchConfigSeuil()`                      |
+
+  Les filtres (`type`, `statut`, `mois`, `client`, `categorie`, `tag`) sont
+  réimplémentés dans les mocks, donc les UI de filtrage sont développables avant
+  le back. Les mutations (upload de document, réordonnancement d'un portfolio,
+  `PUT` du profil et des seuils) restent à écrire de part et d'autre.
+- **Mocks** : `src/mocks/db.js` est un **jeu de données unique** qui tient le rôle
+  de la base pour un utilisateur (`user`, `configSeuil`, `missions`, `documents`,
+  `projets`, `portfolios`, `portfolioProjets`). Chaque module d'`api/` en fait une
+  *vue* — jamais une copie — pour qu'une même mission soit identique vue du
+  dashboard, de la liste ou d'un document lié. Ajouter des données se fait donc
+  dans `db.js`, pas dans un mock de page. Les dates y sont **relatives au mois
+  courant** pour que la démo ne se périme pas, et le jeu couvre volontairement
+  toutes les valeurs d'enum et tous les champs nullables (mission sans `heures`,
+  sans `date_fin`, sans `montant_ht`, document sans `mission_id`, projet perso sans
+  mission), ainsi qu'une mission hors fenêtre glissante. Basculer sur le vrai back
+  = `VITE_USE_MOCKS=false`, rien d'autre à toucher dans le client.
+- **Dérivations** : les agrégats sont calculés côté client par des fonctions pures
+  (`src/lib/dashboard.js`), à partir des lignes brutes. L'endpoint n'a donc qu'à
+  renvoyer les lignes, pas des totaux — et la logique reste testable sans réseau.
+- **Chargement** : une page peut exporter un `loader` nommé à côté de son composant
+  par défaut ; le helper `page()` de `router.jsx` le branche sur la route, donc les
+  données sont prêtes avant le premier rendu (pas d'état de chargement dans la page).
+  `loader`, `action` et `ErrorBoundary` sont autorisés en export dans `.oxlintrc.json`.
+
+### Règles métier déjà câblées
+
+- Le seuil de `config_seuil` est **annuel** (`seuil_heures_annuel`, défaut 507 h =
+  seuil d'intermittence), évalué sur une **fenêtre glissante** de `fenetre_mois` mois.
+  Ce n'est pas un quota mensuel.
+- Seules les missions `INTERMITTENCE` en statut `CONFIRMED` ou `TERMINATED` comptent
+  dans ce seuil (cf. `STATUTS_ACQUIS`) : une mission `PROPOSED` est ignorée.
+- `mission.heures` est nullable : à défaut, les heures valent
+  `nb_jours × config_seuil.heures_jour_defaut` (`heuresMission()`).
+- Il n'y a **pas de table client** : `mission.client_production` est un texte libre,
+  c'est lui qui sert de clé de regroupement dans la répartition.
+- `mission` n'a **pas de titre** : l'intitulé affiché dans les listes est
+  `client_production`, complété par le type et la période.
+
+## Dataviz
+
+Les couleurs de graphe vivent dans `src/lib/viz.js`, **pas** dans les composants :
+un graphe lit un rôle (`couleurType(type)`), jamais un hex.
+
+- Palette catégorielle validée sur fond blanc (la surface des cartes) :
+  `#4f46e5` (= `brand-600`, intermittence) ↔ `#eb6834` (freelance). ΔE CVD 31,4
+  protan / 34,6 tritan, ΔE vision normale 39,2, contraste ≥ 3:1 pour les deux.
+  Toute nouvelle paire de séries doit repasser ce contrôle, pas être choisie à l'œil.
+- **La teinte suit l'entité, jamais son rang** : filtrer ne repeint jamais les
+  séries restantes.
+- Un seul axe de valeur par graphe, jamais deux échelles y.
+- La teinte porte le **type** ; le **statut** est un second encodage (remplissage
+  atténué pour une mission seulement proposée). Aucune information n'est portée par
+  la couleur seule : type et statut sont aussi écrits en texte dans la vue Liste,
+  qui sert de table équivalente au graphe.
+- `tone: 'brand'` est réservé aux teintes de série : les badges de statut utilisent
+  `warning` / `success` / `neutral`, pour qu'un statut ne prenne pas la couleur d'un type.
+- Specs de marque : barres ≤ 24 px, bouts arrondis 4 px, grille et axes en filet
+  continu d'un cran au-dessus de la surface (jamais en pointillés), légende dès deux
+  séries, infobulle au survol.
+- Les filtres sont sur **une seule rangée au-dessus** de ce qu'ils cadrent, jamais
+  dans la carte d'un graphe : les deux vues rendent toujours la même sélection.
+
+`recharts` est la bibliothèque retenue (déjà dans les dépendances) ; chart.js a été
+écarté pour ne pas en avoir deux. Le chunk de la page Missions pèse ~365 kB à cause
+de recharts — acceptable parce que le lazy loading par route ne le charge que là.
+
+### Agenda mensuel
+
+`MissionsAgenda` est écrit à la main, **sans bibliothèque de calendrier** :
+react-big-calendar et FullCalendar apportent leur propre CSS, qui se bat avec
+Tailwind, pour une grille de 6 × 7 cases plus courte à écrire qu'à configurer.
+
+La logique est dans `src/lib/missions.js`, en fonctions pures :
+
+- **Tout se calcule en UTC**, et les jours se comparent par leur clé `'AAAA-MM-JJ'`
+  (`cleJour`). Les dates de l'API sont en UTC : passer par l'heure locale ferait
+  basculer une mission d'un jour à l'autre selon le fuseau du navigateur — à l'ouest
+  de Greenwich, minuit UTC est la veille au soir.
+- `bornesMission` donne `[début, fin]`, en remplaçant une `date_fin` nulle par
+  aujourd'hui (mission ouverte).
+- `construireMois` attribue à chaque mission un **couloir stable par semaine**
+  (placement au premier couloir libre, dans l'ordre des dates de début). Sans ça,
+  une mission qui se poursuit remonte d'une ligne dès qu'une autre se termine et sa
+  bande part en escalier. Les trous deviennent des couloirs `null` explicites, que le
+  composant rend comme des espaceurs de même hauteur.
+- Tous les couloirs ont la **même hauteur** (`h-5`), pastille nommée comme
+  continuation, sinon l'alignement horizontal casse. Le nom n'est écrit qu'au premier
+  jour de la mission et rappelé en début de semaine ; les bouts arrondis ne marquent
+  que les extrémités réelles (`debute` / `termine`), pour que la mission se lise comme
+  une bande continue.
+- Le nombre de semaines s'adapte (4 à 6) pour ne jamais afficher une rangée
+  entièrement hors du mois.
 
 ## Routing
 
@@ -79,7 +236,7 @@ Garder cette forme pour toute nouvelle route.
 | `/projets/:id`          | `ProjetDetail`         | détail / édition d'une fiche projet           |
 | `/portfolios`           | `PortfoliosAdmin`      | liste des pages publiques créées              |
 | `/portfolios/:id`       | `PortfolioAdminDetail` | sélection et réordonnancement des projets     |
-| `/profil`               | `Profil`               | `nom_affiche`, `bio`, `avatar_url`            |
+| `/profil`               | `Profil`               | `first_name`, `last_name`, `email`            |
 | `/parametres`           | `ParametresSeuil`      | seuils et fenêtre de mois                     |
 | `/portfolio/:slug`      | `PortfolioPublic`      | **seule route publique**                      |
 | `*`                     | `NotFound`             | 404                                           |
@@ -93,8 +250,18 @@ futur layout parent ne soit pas remonté à chaque navigation.
   `ProtectedRoute` arrivera, `/portfolio/:slug` doit rester en dehors — c'est la seule
   route publique, elle tape `/api/public/portfolio/:slug` et ne doit ni charger le client
   Supabase ni attendre une session.
-- **Aucun layout partagé** : chaque page est montée seule, il n'y a pas encore de nav
-  commune ni de `<Outlet />`.
+- Le layout partagé existe (voir section Layout), mais seuls **`Dashboard` et
+  `Missions`** ont du contenu : les autres pages renvoient encore `null` et
+  s'affichent donc comme une zone vide dans la coquille. `/login`, `/signup`, `/verify-code`, `/portfolio/:slug` et la 404
+  sont volontairement hors du layout.
+- Le Dashboard et Missions lisent encore les **mocks** (`VITE_USE_MOCKS`), voir *Données & API* :
+  le back n'expose que `/api/health`, l'endpoint `GET /api/dashboard`
+  (`{ user, configSeuil, missions, documents }`) reste à écrire.
+- **Aucun `errorElement`** sur les routes : tant que les mocks servent les données le
+  `loader` ne peut pas échouer, mais dès le branchement sur l'API une erreur réseau
+  affichera l'écran d'erreur par défaut de react-router. À ajouter avec la garde d'auth.
+- La `Topbar` affiche un nom et un avatar **en dur** : à brancher sur
+  `users.first_name` / `last_name` quand la session existera.
 - **Supabase n'est pas installé** : les pages d'auth sont vides. `@supabase/supabase-js`
   reste à ajouter, avec `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` dans
   `.env.example` (la clé anon est publique par design, ce n'est pas un secret).

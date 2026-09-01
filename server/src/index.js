@@ -1,16 +1,16 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { PrismaClient } = require('@prisma/client');
-const { PrismaPg } = require('@prisma/adapter-pg');
+const path = require('path');
 
-dotenv.config();
+// Load env vars BEFORE importing anything that needs them
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+const authRoutes = require('./routes/authRoutes');
+const healthRoutes = require('./routes/healthRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
-
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-const prisma = new PrismaClient({ adapter });
 
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
@@ -19,25 +19,14 @@ app.use(cors({
 
 app.use(express.json());
 
-app.get('/api/health', async (req, res) => {
-  try {
-    const result = await prisma.$queryRaw`SELECT 1 AS ok`;
-
-    res.status(200).json({
-      success: true,
-      message: 'Backend Express is running',
-      database: 'connected',
-      result,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Database connection failed',
-      error: error.message,
-    });
-  }
+// Debug middleware
+app.use((req, res, next) => {
+  console.log(`📨 ${req.method} ${req.path}`);
+  next();
 });
+
+app.use('/api/health', healthRoutes);
+app.use('/api/auth', authRoutes);
 
 app.get('/', (req, res) => {
   res.send('API server is ready');
@@ -45,4 +34,15 @@ app.get('/', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+});
+
+// Global error handler
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
 });
