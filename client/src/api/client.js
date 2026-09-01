@@ -11,4 +11,11 @@ export const api = axios.create({
 // Mettre VITE_USE_MOCKS=false dans .env pour taper la vraie API.
 export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS !== 'false'
 
+// Ressource absente cote mock. Un `throw` de Response est ce que le data router
+// attend dans un loader : il rend l'errorElement de la route au lieu de laisser
+// la page se demerder avec un `undefined` (l'API, elle, repondra un vrai 404).
+export function notFound(quoi = 'Ressource') {
+  throw new Response(`${quoi} introuvable`, { status: 404 })
+}
+
 export default api

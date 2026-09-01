@@ -63,6 +63,8 @@ export function computeDashboard({ configSeuil, missions = [], documents = [] },
 
   const repartition = [...parClient]
     .map(([client, heures]) => ({ client, heures }))
+    // Une mission sans heures ni nb_jours produirait une barre a zero.
+    .filter((ligne) => ligne.heures > 0)
     .sort((a, b) => b.heures - a.heures)
 
   return {

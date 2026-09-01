@@ -100,13 +100,35 @@ La source de vérité du modèle est `../server/prisma/schema.prisma`. Le client
   mettre ce fichier à jour ; `enumMeta()` évite le crash en affichant la valeur
   brute si le client est en retard.
 - **Appels** : `src/api/client.js` expose l'instance axios (`baseURL:
-  VITE_API_URL`) et le drapeau `USE_MOCKS`. Un module par ressource dans
-  `src/api/`, qui renvoie le mock ou tape l'API selon ce drapeau — les pages ne
-  connaissent ni axios ni les mocks.
-- **Mocks** : `src/mocks/` contient les données simulées, écrites à la forme exacte
-  du JSON attendu (uuid, ISO 8601, décimaux en chaînes). Leurs dates sont
-  **relatives au mois courant** pour que la démo ne se périme pas. Basculer sur le
-  vrai back = `VITE_USE_MOCKS=false`, rien d'autre à toucher dans le client.
+  VITE_API_URL`), le drapeau `USE_MOCKS` et `notFound()`. Un module par ressource
+  dans `src/api/`, qui renvoie le mock ou tape l'API selon ce drapeau — les pages
+  ne connaissent ni axios ni les mocks. Chaque fonction porte en commentaire le
+  contrat de l'endpoint qu'elle attend côté serveur :
+
+  | Module            | Fonctions                                                  |
+  | ----------------- | ---------------------------------------------------------- |
+  | `dashboard.js`    | `fetchDashboard()`                                         |
+  | `missions.js`     | `fetchMissions(filtres)`, `fetchMission(id)`               |
+  | `documents.js`    | `fetchDocuments(filtres)`                                  |
+  | `projets.js`      | `fetchProjets(filtres)`, `fetchProjet(id)`                  |
+  | `portfolios.js`   | `fetchPortfolios()`, `fetchPortfolio(id)`, `fetchPortfolioPublic(slug)` |
+  | `compte.js`       | `fetchProfil()`, `fetchConfigSeuil()`                      |
+
+  Les filtres (`type`, `statut`, `mois`, `client`, `categorie`, `tag`) sont
+  réimplémentés dans les mocks, donc les UI de filtrage sont développables avant
+  le back. Les mutations (upload de document, réordonnancement d'un portfolio,
+  `PUT` du profil et des seuils) restent à écrire de part et d'autre.
+- **Mocks** : `src/mocks/db.js` est un **jeu de données unique** qui tient le rôle
+  de la base pour un utilisateur (`user`, `configSeuil`, `missions`, `documents`,
+  `projets`, `portfolios`, `portfolioProjets`). Chaque module d'`api/` en fait une
+  *vue* — jamais une copie — pour qu'une même mission soit identique vue du
+  dashboard, de la liste ou d'un document lié. Ajouter des données se fait donc
+  dans `db.js`, pas dans un mock de page. Les dates y sont **relatives au mois
+  courant** pour que la démo ne se périme pas, et le jeu couvre volontairement
+  toutes les valeurs d'enum et tous les champs nullables (mission sans `heures`,
+  sans `date_fin`, sans `montant_ht`, document sans `mission_id`, projet perso sans
+  mission), ainsi qu'une mission hors fenêtre glissante. Basculer sur le vrai back
+  = `VITE_USE_MOCKS=false`, rien d'autre à toucher dans le client.
 - **Dérivations** : les agrégats sont calculés côté client par des fonctions pures
   (`src/lib/dashboard.js`), à partir des lignes brutes. L'endpoint n'a donc qu'à
   renvoyer les lignes, pas des totaux — et la logique reste testable sans réseau.
