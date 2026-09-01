@@ -291,8 +291,9 @@ export const projets = [
     titre: 'Captation live — Cie du Lys',
     description: 'Captation 4 cameras du spectacle "Nord", montage et etalonnage.',
     tag: 'PRO',
+    type: 'VIDEO',
     date: jour(-10, 21),
-    lienVideo: 'https://vimeo.com/000000001',
+    link: 'https://vimeo.com/000000001',
     createdAt: jour(-10, 25),
   },
   {
@@ -302,8 +303,9 @@ export const projets = [
     titre: 'Clip "Halogene"',
     description: null, // description est nullable
     tag: 'PRO',
+    type: 'VIDEO',
     date: jour(-3, 24),
-    lienVideo: 'https://vimeo.com/000000002',
+    link: 'https://vimeo.com/000000002',
     createdAt: jour(-3, 26),
   },
   {
@@ -313,8 +315,9 @@ export const projets = [
     titre: 'Documentaire court — Radio Ouest',
     description: 'Format 12 minutes diffuse en ligne.',
     tag: 'PRO',
+    type: 'VIDEO',
     date: jour(-2, 10),
-    lienVideo: 'https://vimeo.com/000000003',
+    link: 'https://vimeo.com/000000003',
     createdAt: jour(-2, 14),
   },
   {
@@ -324,8 +327,9 @@ export const projets = [
     titre: 'Essai lumiere — nuit',
     description: 'Test de sources LED en basse lumiere.',
     tag: 'PERSONAL',
+    type: 'IMAGE',
     date: jour(-6, 8),
-    lienVideo: 'https://vimeo.com/000000004',
+    link: 'https://vimeo.com/000000004',
     createdAt: jour(-6, 9),
   },
   {
@@ -335,8 +339,9 @@ export const projets = [
     titre: 'Teaser festival',
     description: 'Teaser 40 s pour la campagne 2026.',
     tag: 'PRO',
+    type: 'VIDEO',
     date: jour(-7, 20),
-    lienVideo: 'https://vimeo.com/000000005',
+    link: 'https://vimeo.com/000000005',
     createdAt: jour(-7, 22),
   },
 ]

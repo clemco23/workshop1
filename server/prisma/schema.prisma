@@ -32,6 +32,13 @@ enum ProjectTag {
   PERSONAL
 }
 
+enum ProjectType {
+  IMAGE
+  PDF
+  VIDEO
+  LINK
+}
+
 model User {
   id         String   @id @default(uuid())
   firstName  String?  @map("first_name")
@@ -127,8 +134,9 @@ model Project {
   titre       String
   description String?
   tag         ProjectTag
+  type        ProjectType @default(VIDEO)
   date        DateTime
-  lienVideo   String      @map("lien_video")
+  link        String
   createdAt   DateTime    @default(now()) @map("created_at")
 
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)

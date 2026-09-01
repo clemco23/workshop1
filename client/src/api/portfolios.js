@@ -63,11 +63,11 @@ export async function fetchPortfolioPublic(slug) {
     slug: portfolio.slug,
     titrePage: portfolio.titrePage,
     auteur: `${user.firstName} ${user.lastName}`, // pas d'email en public
-    projets: projetsDuPortfolio(portfolio.id).map(({ titre, description, date, lienVideo, tag }) => ({
+    projets: projetsDuPortfolio(portfolio.id).map(({ titre, description, date, link, tag }) => ({
       titre,
       description,
       date,
-      lienVideo,
+      link,
       tag,
     })),
   }
