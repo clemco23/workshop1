@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { prisma } = require('../config/prisma');
+const { sendVerificationCode } = require('./emailService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
@@ -45,7 +46,9 @@ async function requestCode(email) {
     },
   });
 
-  return { user, code };
+  const delivery = await sendVerificationCode(user.email, code);
+
+  return { user, messageId: delivery.messageId };
 }
 
 async function verifyCode(email, code) {

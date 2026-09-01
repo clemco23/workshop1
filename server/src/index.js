@@ -1,9 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path');
 
 // Load env vars BEFORE importing anything that needs them
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const authRoutes = require('./routes/authRoutes');
 const healthRoutes = require('./routes/healthRoutes');

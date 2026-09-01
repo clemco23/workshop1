@@ -10,9 +10,7 @@ async function requestCodeController(req, res) {
     }
 
     console.log('📧 Requesting code for email:', email);
-    const { user, code } = await requestCode(email);
-
-    console.log('✅ Verification code for', user.email, ':', code);
+    const { user } = await requestCode(email);
 
     return res.status(200).json({
       success: true,
@@ -20,6 +18,14 @@ async function requestCodeController(req, res) {
       email: user.email,
     });
   } catch (error) {
+    if (error.code === 'CONFIGURATION_BREVO_MANQUANTE') {
+      return res.status(503).json({ message: 'Service email non configuré' });
+    }
+
+    if (error.code === 'ENVOI_EMAIL_ECHOUE') {
+      return res.status(502).json({ message: 'Impossible d’envoyer le code par email', error });
+    }
+
     console.error('❌ ERROR in requestCodeController:', error.message);
     console.error('Full error:', error);
     return res.status(500).json({ message: 'Erreur serveur' });
