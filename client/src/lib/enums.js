@@ -30,6 +30,13 @@ export const PROJET_TAG = {
   PERSONAL: { label: 'Perso', tone: 'neutral' },
 }
 
+export const PROJET_TYPE = {
+  IMAGE: { label: 'Image', tone: 'brand' },
+  PDF: { label: 'PDF', tone: 'warning' },
+  VIDEO: { label: 'Vidéo', tone: 'success' },
+  LINK: { label: 'Lien', tone: 'neutral' },
+}
+
 // Les heures d'intermittence sont les seules qui comptent pour le seuil annuel.
 export const STATUTS_ACQUIS = ['CONFIRMED', 'TERMINATED']
 

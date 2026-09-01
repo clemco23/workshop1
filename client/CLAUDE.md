@@ -267,15 +267,16 @@ futur layout parent ne soit pas remonté à chaque navigation.
 - Le Dashboard et Missions lisent encore les **mocks** (`VITE_USE_MOCKS`), voir *Données & API* :
   le back n'expose que `/api/health`, l'endpoint `GET /api/dashboard`
   (`{ user, configSeuil, missions, documents }`) reste à écrire.
-- **Médias d'une fiche projet** : une réalisation se montre avec une vidéo, des images,
-  un PDF ou un lien, mais le schéma n'a que `projet.lien_video` (`String` requis, unique).
-  Le client passe donc partout par `mediasProjet()` (`src/lib/medias.js`), qui rend déjà
-  une *liste* typée (`VIDEO` / `IMAGE` / `PDF` / `LIEN`) et retombe sur `lienVideo`
-  quand le champ `medias` est absent. Côté serveur, la suite est une table
-  `projet_media` (`projet_id`, `type`, `url` | `fichier_path`, `titre`, `ordre`) —
-  **pas** un `projet_id` sur `document` : `document` est le coffre privé des
-  justificatifs et `/portfolio/:slug` est public. Quand l'API renverra `medias`,
-  seule cette fonction change.
+- **Médias d'une fiche projet** : le schéma stocke **un seul** média par fiche —
+  `projet.type` (enum `ProjectType` : `IMAGE` / `PDF` / `VIDEO` / `LINK`) et `projet.link`.
+  Une réalisation peut pourtant en montrer plusieurs (captation + photos + dossier de
+  presse), donc le client passe partout par `mediasProjet()` (`src/lib/medias.js`), qui
+  rend une *liste* : le tableau `medias` s'il existe, sinon le couple `type` + `link`.
+  Les libellés viennent de `PROJET_TYPE` dans `enums.js`, `medias.js` n'ajoute que l'icône.
+  Côté serveur, la suite est une table `projet_media` (`projet_id`, `type`, `url` |
+  `fichier_path`, `titre`, `ordre`) — **pas** un `projet_id` sur `document` : `document`
+  est le coffre privé des justificatifs et `/portfolio/:slug` est public. Quand l'API
+  renverra `medias`, seule cette fonction change.
 - **`errorElement` seulement sur `/portfolio/:slug`** : cette route publique exporte un
   `ErrorBoundary` (le helper `page()` de `router.jsx` le branche comme `loader`), parce
   qu'un visiteur sans compte ne doit pas tomber sur l'écran de dev de react-router quand

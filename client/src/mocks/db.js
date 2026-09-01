@@ -283,10 +283,11 @@ export const documents = [
   },
 ]
 
-// `medias` n'existe pas encore cote schema : `projet.lien_video` y est un String
-// requis et unique. Le champ anticipe la table `projet_media` (type, url |
-// fichier_path, titre, ordre) et le client le lit via `mediasProjet()`, qui
-// retombe sur `lienVideo` quand il est absent — d'ou des fiches des deux formes.
+// Le schema ne stocke qu'un seul media par fiche : `type` (ProjectType) + `link`.
+// `medias` n'existe pas en base — il anticipe la table `projet_media` (type, url |
+// fichier_path, titre, ordre) pour les fiches qui montrent plusieurs pieces. Le
+// client lit toujours `mediasProjet()`, qui prend `medias` s'il est la et retombe
+// sinon sur `{ type, link }` : d'ou des fiches des deux formes dans ce jeu.
 export const projets = [
   {
     id: P(1),
@@ -295,8 +296,9 @@ export const projets = [
     titre: 'Captation live — Cie du Lys',
     description: 'Captation 4 cameras du spectacle "Nord", montage et etalonnage.',
     tag: 'PRO',
+    type: 'VIDEO',
     date: jour(-10, 21),
-    lienVideo: 'https://vimeo.com/000000001',
+    link: 'https://vimeo.com/000000001',
     medias: [
       { type: 'VIDEO', url: 'https://vimeo.com/000000001', titre: 'Captation integrale' },
       { type: 'IMAGE', url: 'https://images.example.com/lys-plateau.jpg', titre: 'Plateau' },
@@ -311,8 +313,9 @@ export const projets = [
     titre: 'Clip "Halogene"',
     description: null, // description est nullable
     tag: 'PRO',
+    type: 'VIDEO',
     date: jour(-3, 24),
-    lienVideo: 'https://vimeo.com/000000002',
+    link: 'https://vimeo.com/000000002',
     createdAt: jour(-3, 26),
   },
   {
@@ -322,8 +325,9 @@ export const projets = [
     titre: 'Documentaire court — Radio Ouest',
     description: 'Format 12 minutes diffuse en ligne.',
     tag: 'PRO',
+    type: 'VIDEO',
     date: jour(-2, 10),
-    lienVideo: 'https://vimeo.com/000000003',
+    link: 'https://vimeo.com/000000003',
     medias: [
       { type: 'VIDEO', url: 'https://vimeo.com/000000003' },
       // Sans `type` : il est devine a l'URL par typeMediaDepuisUrl().
@@ -338,8 +342,9 @@ export const projets = [
     titre: 'Essai lumiere — nuit',
     description: 'Test de sources LED en basse lumiere.',
     tag: 'PERSONAL',
+    type: 'IMAGE',
     date: jour(-6, 8),
-    lienVideo: 'https://vimeo.com/000000004',
+    link: 'https://vimeo.com/000000004',
     medias: [
       { type: 'IMAGE', url: 'https://images.example.com/essai-led-01.jpg', titre: 'LED 3200K' },
       { type: 'IMAGE', url: 'https://images.example.com/essai-led-02.jpg', titre: 'LED 5600K' },
@@ -353,8 +358,9 @@ export const projets = [
     titre: 'Teaser festival',
     description: 'Teaser 40 s pour la campagne 2026.',
     tag: 'PRO',
+    type: 'VIDEO',
     date: jour(-7, 20),
-    lienVideo: 'https://vimeo.com/000000005',
+    link: 'https://vimeo.com/000000005',
     createdAt: jour(-7, 22),
   },
 ]

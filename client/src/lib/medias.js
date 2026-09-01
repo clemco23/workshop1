@@ -1,25 +1,29 @@
+import { PROJET_TYPE, enumMeta } from './enums.js'
+
 // Medias d'une fiche projet : une realisation se montre avec une video, des
 // photos, un PDF de dossier de presse ou un lien vers un article.
 //
-// ATTENTION — ce n'est pas (encore) un enum du schema. `projet.lien_video` est
-// aujourd'hui un `String` requis et unique cote Prisma : une seule URL, sans
-// type ni ordre. Tout le client passe donc par `mediasProjet()`, qui rend deja
-// une *liste* de medias typees. Le jour ou l'API renverra un tableau `medias`
-// (table `projet_media` : projet_id, type, url | fichier_path, titre, ordre),
-// c'est cette seule fonction qui change — ni les cartes ni les pages.
+// Le schema ne stocke qu'un media par fiche : `projet.type` (enum ProjectType :
+// IMAGE / PDF / VIDEO / LINK) et `projet.link`. Tout le client passe malgre tout
+// par `mediasProjet()`, qui rend une *liste* : le jour ou l'API renverra un
+// tableau `medias` (table `projet_media` : projet_id, type, url | fichier_path,
+// titre, ordre), c'est cette seule fonction qui change — ni les cartes ni les pages.
 //
 // A ne pas confondre avec `document` : celui-la est le coffre prive des
 // justificatifs, ces medias-ci sont publies sur /portfolio/:slug.
 
-export const MEDIA_TYPE = {
-  VIDEO: { label: 'Video', icon: 'video' },
-  IMAGE: { label: 'Image', icon: 'image' },
-  PDF: { label: 'PDF', icon: 'documents' },
-  LIEN: { label: 'Lien', icon: 'lien' },
+// Les libelles viennent de PROJET_TYPE (miroir de l'enum serveur) : un seul
+// endroit ou les traduire. Ici on n'ajoute que l'icone du dictionnaire d'Icon.
+const ICONES = {
+  IMAGE: 'image',
+  PDF: 'documents',
+  VIDEO: 'video',
+  LINK: 'lien',
 }
 
 export function mediaMeta(type) {
-  return MEDIA_TYPE[type] ?? MEDIA_TYPE.LIEN
+  const meta = enumMeta(PROJET_TYPE, type)
+  return { ...meta, icon: ICONES[type] ?? 'lien' }
 }
 
 const EXTENSIONS_IMAGE = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif']
@@ -33,7 +37,7 @@ export function typeMediaDepuisUrl(url = '') {
   if (minuscule.endsWith('.pdf')) return 'PDF'
   if (EXTENSIONS_IMAGE.some((extension) => minuscule.endsWith(extension))) return 'IMAGE'
   if (HEBERGEURS_VIDEO.some((hote) => minuscule.includes(hote))) return 'VIDEO'
-  return 'LIEN'
+  return 'LINK'
 }
 
 function normaliser(media, index) {
@@ -50,10 +54,13 @@ function normaliser(media, index) {
   }
 }
 
-// Liste des medias d'un projet, quelle que soit la forme rendue par l'API.
+// Liste des medias d'un projet, quelle que soit la forme rendue par l'API :
+// le tableau `medias` s'il existe un jour, sinon le couple `type` + `link` du
+// schema actuel. `type` a une valeur par defaut cote Prisma, mais on retombe
+// quand meme sur la deduction par l'URL s'il manque.
 export function mediasProjet(projet) {
   if (Array.isArray(projet.medias)) return projet.medias.map(normaliser)
-  if (projet.lienVideo) return [normaliser({ type: 'VIDEO', url: projet.lienVideo }, 0)]
+  if (projet.link) return [normaliser({ type: projet.type, url: projet.link }, 0)]
   return []
 }
 
