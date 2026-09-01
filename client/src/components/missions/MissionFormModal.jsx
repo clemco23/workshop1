@@ -4,7 +4,7 @@ import Button from '../ui/Button.jsx'
 import Input from '../ui/Input.jsx'
 import Select from '../ui/Select.jsx'
 import { MISSION_STATUT, MISSION_TYPE } from '../../lib/enums.js'
-import { MISSION_VIDE, validerMission } from '../../lib/missionForm.js'
+import { MISSION_VIDE, estModifie, validerMission, versFormulaire } from '../../lib/missionForm.js'
 import { formatHeures, num } from '../../lib/format.js'
 
 const optionsType = Object.entries(MISSION_TYPE).map(([value, meta]) => ({
@@ -17,20 +17,39 @@ const optionsStatut = Object.entries(MISSION_STATUT).map(([value, meta]) => ({
   label: meta.label,
 }))
 
-// Creation d'une mission. Le formulaire se remplit et se valide entierement,
-// mais POST /api/missions n'est pas ecrit : le bouton de creation reste
-// desactive plutot que de faire disparaitre la saisie dans le vide.
+// Creation *et* edition d'une mission : les champs, les regles et les messages
+// sont les memes, seul l'intitule change. Passer `mission` bascule en edition.
 //
-// Quand l'endpoint arrivera, ce composant n'a qu'a appeler `versPayload(formulaire)`
-// — le reste (validation, etat, remise a zero) est deja la.
-function MissionFormModal({ ouvert, onClose, heuresJourDefaut }) {
-  const [formulaire, setFormulaire] = useState(MISSION_VIDE)
+// Le formulaire se remplit et se valide entierement, mais ni POST /api/missions
+// ni PUT /api/missions/:id ne sont ecrits : le bouton reste desactive plutot que
+// de faire disparaitre la saisie dans le vide. Le jour venu, il n'y a qu'a
+// envoyer `versPayload(formulaire)` — validation, etat et remise a zero sont la.
+function MissionFormModal({ ouvert, onClose, heuresJourDefaut, mission = null }) {
+  const edition = mission != null
+  const valeursInitiales = useMemo(
+    () => (edition ? versFormulaire(mission) : MISSION_VIDE),
+    [edition, mission],
+  )
+
+  const [formulaire, setFormulaire] = useState(valeursInitiales)
   const { erreurs, valide } = useMemo(() => validerMission(formulaire), [formulaire])
+
+  // Re-partir des valeurs de la mission a chaque ouverture : sans ca, une saisie
+  // abandonnee reapparaitrait a la reouverture. Ajustement pendant le rendu
+  // (React le recommande pour « reinitialiser un etat quand une prop change »)
+  // plutot qu'un effet, qui declencherait un rendu en cascade.
+  const [etaitOuvert, setEtaitOuvert] = useState(ouvert)
+  if (ouvert !== etaitOuvert) {
+    setEtaitOuvert(ouvert)
+    if (ouvert) setFormulaire(valeursInitiales)
+  }
 
   const setChamp = (cle) => (valeur) => setFormulaire((etat) => ({ ...etat, [cle]: valeur }))
 
+  const modifie = edition ? estModifie(formulaire, mission) : true
+
   const fermer = () => {
-    setFormulaire(MISSION_VIDE)
+    setFormulaire(valeursInitiales)
     onClose()
   }
 
@@ -44,8 +63,12 @@ function MissionFormModal({ ouvert, onClose, heuresJourDefaut }) {
     <Modal
       ouvert={ouvert}
       onClose={fermer}
-      titre="Nouvelle mission"
-      description="Le client, le type et la date de debut suffisent — le reste peut venir plus tard."
+      titre={edition ? 'Modifier la mission' : 'Nouvelle mission'}
+      description={
+        edition
+          ? mission.clientProduction
+          : 'Le client, le type et la date de debut suffisent — le reste peut venir plus tard.'
+      }
       footer={
         <>
           <Button variant="secondary" onClick={fermer}>
@@ -57,12 +80,14 @@ function MissionFormModal({ ouvert, onClose, heuresJourDefaut }) {
           <Button
             disabled
             title={
-              valide
-                ? "Creation a venir : POST /api/missions n'est pas encore en ligne"
-                : 'Corrige les champs en rouge'
+              !valide
+                ? 'Corrige les champs en rouge'
+                : edition
+                  ? "Edition a venir : PUT /api/missions/:id n'est pas encore en ligne"
+                  : "Creation a venir : POST /api/missions n'est pas encore en ligne"
             }
           >
-            Creer la mission
+            {edition ? 'Enregistrer' : 'Creer la mission'}
           </Button>
         </>
       }
@@ -182,8 +207,15 @@ function MissionFormModal({ ouvert, onClose, heuresJourDefaut }) {
         </div>
 
         <p className="border-t border-slate-100 pt-3 text-xs text-amber-700">
-          Creation indisponible : POST /api/missions n'est pas encore en ligne.
+          {edition
+            ? "Enregistrement indisponible : PUT /api/missions/:id n'est pas encore en ligne."
+            : "Creation indisponible : POST /api/missions n'est pas encore en ligne."}
         </p>
+        {/* En edition, dire ce qui partirait a l'enregistrement : sans ca, un
+            bouton grise ne distingue pas « rien change » de « pas branche ». */}
+        {edition && !modifie && (
+          <p className="text-xs text-slate-500">Aucune modification pour l'instant.</p>
+        )}
       </div>
     </Modal>
   )

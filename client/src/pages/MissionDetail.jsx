@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useLoaderData } from 'react-router-dom'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Card from '../components/ui/Card.jsx'
@@ -8,6 +9,7 @@ import StatCard from '../components/ui/StatCard.jsx'
 import ProgressBar from '../components/ui/ProgressBar.jsx'
 import MissionDocuments from '../components/missions/MissionDocuments.jsx'
 import MissionProjets from '../components/missions/MissionProjets.jsx'
+import MissionFormModal from '../components/missions/MissionFormModal.jsx'
 import { fetchMission } from '../api/missions.js'
 import { fetchDocuments } from '../api/documents.js'
 import { fetchProjets } from '../api/projets.js'
@@ -56,6 +58,7 @@ function Ligne({ label, hint, children }) {
 
 function MissionDetail() {
   const { mission, configSeuil, documents, projets } = useLoaderData()
+  const [edition, setEdition] = useState(false)
 
   const type = enumMeta(MISSION_TYPE, mission.type)
   const statut = enumMeta(MISSION_STATUT, mission.statut)
@@ -85,12 +88,19 @@ function MissionDetail() {
           <Icon name="arrowLeft" className="size-4" />
           Missions
         </Button>
-        {/* Les mutations (PUT /api/missions/:id) ne sont ecrites ni ici ni cote
-            serveur : le bouton reste desactive plutot que de mentir. */}
-        <Button disabled title="Edition a venir">
+        <Button onClick={() => setEdition(true)}>
           Modifier
         </Button>
       </PageHeader>
+
+      {/* Meme formulaire qu'a la creation, prerempli : les regles de saisie ne
+          doivent pas diverger entre les deux. */}
+      <MissionFormModal
+        ouvert={edition}
+        onClose={() => setEdition(false)}
+        heuresJourDefaut={configSeuil.heuresJourDefaut}
+        mission={mission}
+      />
 
       {/* Le type se lit par trois canaux redondants — filet colore, pastille,
           libelle — jamais par la couleur seule. */}

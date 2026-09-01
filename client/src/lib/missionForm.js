@@ -18,6 +18,35 @@ export const MISSION_VIDE = {
   note: '',
 }
 
+// Mission de l'API -> valeurs du formulaire (des chaines). Les dates arrivent en
+// ISO UTC et les <input type="date"> attendent 'AAAA-MM-JJ' : les dix premiers
+// caracteres de l'ISO sont deja la date UTC, donc pas de passage par l'heure
+// locale, qui decalerait d'un jour a l'ouest de Greenwich.
+export function versFormulaire(mission) {
+  // Decimal Prisma : '40.00' -> '40', pour ne pas afficher des zeros inutiles
+  // dans un champ que l'utilisateur va reecrire.
+  const decimal = (valeur) => (valeur == null ? '' : String(Number(valeur)))
+
+  return {
+    clientProduction: mission.clientProduction ?? '',
+    type: mission.type,
+    statut: mission.statut,
+    dateDebut: mission.dateDebut ? mission.dateDebut.slice(0, 10) : '',
+    dateFin: mission.dateFin ? mission.dateFin.slice(0, 10) : '',
+    heures: decimal(mission.heures),
+    montantHt: decimal(mission.montantHt),
+    nbJours: decimal(mission.nbJours),
+    note: mission.note ?? '',
+  }
+}
+
+// Y a-t-il quelque chose a enregistrer ? Comparaison champ a champ des chaines
+// du formulaire, apres normalisation par versFormulaire.
+export function estModifie(formulaire, mission) {
+  const initial = versFormulaire(mission)
+  return Object.keys(initial).some((cle) => initial[cle] !== formulaire[cle])
+}
+
 function nombreOptionnel(valeur, { max, entier = false, label }) {
   if (valeur.trim() === '') return null // champ nullable : vide est valide
   const n = Number(valeur)
