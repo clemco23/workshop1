@@ -252,7 +252,7 @@ futur layout parent ne soit pas remonté à chaque navigation.
   route publique, elle tape `/api/public/portfolio/:slug` et ne doit ni charger le client
   Supabase ni attendre une session.
 - Le layout partagé existe (voir section Layout), mais seuls **`Dashboard`,
-  `Missions` et `MissionDetail`** ont du contenu : les autres pages renvoient encore `null` et
+  `Missions`, `MissionDetail` et `Documents`** ont du contenu : les autres pages renvoient encore `null` et
   s'affichent donc comme une zone vide dans la coquille. `/login`, `/signup`, `/verify-code`, `/portfolio/:slug` et la 404
   sont volontairement hors du layout.
 - Le Dashboard et Missions lisent encore les **mocks** (`VITE_USE_MOCKS`), voir *Données & API* :
