@@ -63,7 +63,11 @@ Tout l'habillage passe par trois choses, à réutiliser au lieu de recréer du s
   palette est `slate-*` (fond `slate-50`, surfaces blanches, bordures `slate-200`,
   texte `slate-900` / `slate-500`).
 - **Primitives** dans `src/components/ui/` : `Card`, `StatCard`, `Button`, `Badge`,
-  `ProgressBar`, `PageHeader`, `EmptyState`, `Icon`, `Tabs`, `Select`. Un fichier par composant,
+  `ProgressBar`, `PageHeader`, `EmptyState`, `Icon`, `Tabs`, `Select`, `Input`, `Modal`.
+  `Modal` s'appuie sur le `<dialog>` natif (`showModal()`) : le piège de focus, la touche
+  Échap, le fond inerte et le retour du focus au déclencheur viennent du navigateur — ne
+  pas le réécrire à la main. L'état ouvert/fermé reste au parent, et le champ à focaliser
+  à l'ouverture porte `data-autofocus`. Un fichier par composant,
   `export default`, `className` accepté en dernier pour surcharger, fusion via
   `cn()` (`src/lib/cn.js`). `Button` prend `as` (`<Button as={Link} to="…">`).
   `Icon` porte un dictionnaire de tracés SVG 24×24 en `currentColor` : ajouter une
