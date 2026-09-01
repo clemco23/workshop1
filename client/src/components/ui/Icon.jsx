@@ -58,6 +58,14 @@ const paths = {
     </>
   ),
   plus: <path d="M12 5v14M5 12h14" />,
+  lien: (
+    <>
+      <path d="M14 4h6v6" />
+      <path d="M20 4l-8 8" />
+      <path d="M18 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" />
+    </>
+  ),
+  arrowLeft: <path d="M19 12H5m6-7l-7 7 7 7" />,
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   close: <path d="M6 6l12 12M18 6L6 18" />,
   chevronRight: <path d="M9 5l7 7-7 7" />,

@@ -111,6 +111,7 @@ La source de vérité du modèle est `../server/prisma/schema.prisma`. Le client
   | `missions.js`     | `fetchMissions(filtres)`, `fetchMission(id)`               |
   | `documents.js`    | `fetchDocuments(filtres)`                                  |
   | `projets.js`      | `fetchProjets(filtres)`, `fetchProjet(id)`                  |
+  |                   | filtres projets : `tag`, `missionId`                        |
   | `portfolios.js`   | `fetchPortfolios()`, `fetchPortfolio(id)`, `fetchPortfolioPublic(slug)` |
   | `compte.js`       | `fetchProfil()`, `fetchConfigSeuil()`                      |
 
@@ -250,8 +251,8 @@ futur layout parent ne soit pas remonté à chaque navigation.
   `ProtectedRoute` arrivera, `/portfolio/:slug` doit rester en dehors — c'est la seule
   route publique, elle tape `/api/public/portfolio/:slug` et ne doit ni charger le client
   Supabase ni attendre une session.
-- Le layout partagé existe (voir section Layout), mais seuls **`Dashboard` et
-  `Missions`** ont du contenu : les autres pages renvoient encore `null` et
+- Le layout partagé existe (voir section Layout), mais seuls **`Dashboard`,
+  `Missions` et `MissionDetail`** ont du contenu : les autres pages renvoient encore `null` et
   s'affichent donc comme une zone vide dans la coquille. `/login`, `/signup`, `/verify-code`, `/portfolio/:slug` et la 404
   sont volontairement hors du layout.
 - Le Dashboard et Missions lisent encore les **mocks** (`VITE_USE_MOCKS`), voir *Données & API* :

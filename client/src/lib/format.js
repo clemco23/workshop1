@@ -14,6 +14,16 @@ const dateFmt = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short
 
 const moisFmt = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' })
 
+// Date complete d'une fiche (pas d'une liste). Forcee en UTC : les dates de
+// l'API sont a minuit UTC, les rendre en heure locale ferait afficher la veille
+// a l'ouest de Greenwich.
+const dateLongueFmt = new Intl.DateTimeFormat('fr-FR', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+})
+
 // Decimal Prisma (string | number | null) -> number
 export function num(value) {
   return value == null ? 0 : Number(value)
@@ -29,6 +39,10 @@ export function formatHeures(value) {
 
 export function formatDate(value) {
   return value ? dateFmt.format(new Date(value)) : '—'
+}
+
+export function formatDateLongue(value) {
+  return value ? dateLongueFmt.format(new Date(value)) : '—'
 }
 
 export function formatMois(value) {

@@ -2,7 +2,7 @@ import { api, USE_MOCKS, notFound } from './client.js'
 import { missions, projets } from '../mocks/db.js'
 
 // Contrats attendus cote server :
-//   GET /api/projets?tag=  -> Projet[]
+//   GET /api/projets?tag=&missionId=  -> Projet[]
 //   GET /api/projets/:id   -> Projet (+ mission liee)
 
 export async function fetchProjets(filtres = {}) {
@@ -11,10 +11,11 @@ export async function fetchProjets(filtres = {}) {
     return data
   }
 
-  const { tag } = filtres
+  const { tag, missionId } = filtres
 
   return projets
     .filter((p) => !tag || p.tag === tag)
+    .filter((p) => !missionId || p.missionId === missionId)
     .sort((a, b) => new Date(b.date) - new Date(a.date))
 }
 
