@@ -49,7 +49,6 @@ export const router = createBrowserRouter([
         ],
       },
 
-      { path: 'profil', lazy: page(() => import('./pages/Profil.jsx')) },
       { path: 'parametres', lazy: page(() => import('./pages/ParametresSeuil.jsx')) },
     ],
   },

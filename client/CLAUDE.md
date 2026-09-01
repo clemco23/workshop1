@@ -245,7 +245,6 @@ Garder cette forme pour toute nouvelle route.
 | `/projets/:id`          | `ProjetDetail`         | détail / édition d'une fiche projet           |
 | `/portfolios`           | `PortfoliosAdmin`      | liste des pages publiques créées              |
 | `/portfolios/:id`       | `PortfolioAdminDetail` | sélection et réordonnancement des projets     |
-| `/profil`               | `Profil`               | `first_name`, `last_name`, `email`            |
 | `/parametres`           | `ParametresSeuil`      | seuils et fenêtre de mois                     |
 | `/portfolio/:slug`      | `PortfolioPublic`      | **seule route publique**                      |
 | `*`                     | `NotFound`             | 404                                           |
