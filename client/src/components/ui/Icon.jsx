@@ -61,6 +61,21 @@ const paths = {
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   close: <path d="M6 6l12 12M18 6L6 18" />,
   chevronRight: <path d="M9 5l7 7-7 7" />,
+  chevronLeft: <path d="M15 5l-7 7 7 7" />,
+  agenda: (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+    </>
+  ),
+  timeline: (
+    <>
+      <path d="M4 7h9M4 12h14M4 17h6" />
+      <circle cx="15.5" cy="7" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="20" cy="12" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="12.5" cy="17" r="1.5" fill="currentColor" stroke="none" />
+    </>
+  ),
   trendUp: (
     <>
       <path d="M4 17l6-6 4 4 6-6" />
