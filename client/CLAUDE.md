@@ -41,10 +41,45 @@ client/
     main.jsx          # bootstrap React
     App.jsx           # composant racine : rend <RouterProvider router={router} />
     router.jsx        # définition de toutes les routes (createBrowserRouter)
-    index.css         # styles globaux + Tailwind
-    pages/            # un composant par route, encore vides (return null)
+    index.css         # Tailwind + tokens du design system (@theme)
+    lib/cn.js         # helper de concaténation de classes
+    components/
+      ui/             # primitives réutilisables (Card, Button, Badge, Icon, …)
+      layout/         # AppLayout, Sidebar, Topbar, navItems.js
+    pages/            # un composant par route (seul Dashboard est rempli)
     assets/           # images importées par le code (hero.png, logos)
 ```
+
+## Design system
+
+Tout l'habillage passe par trois choses, à réutiliser au lieu de recréer du style :
+
+- **Tokens** dans `src/index.css`, bloc `@theme` : la palette d'accent est exposée
+  comme `brand-50 … brand-700` (indigo par défaut). Utiliser `bg-brand-600`,
+  `text-brand-700`, etc. — **jamais** `indigo-*` en dur, pour qu'un changement
+  d'accent reste un changement d'une seule couleur dans ce fichier. Le reste de la
+  palette est `slate-*` (fond `slate-50`, surfaces blanches, bordures `slate-200`,
+  texte `slate-900` / `slate-500`).
+- **Primitives** dans `src/components/ui/` : `Card`, `StatCard`, `Button`, `Badge`,
+  `ProgressBar`, `PageHeader`, `EmptyState`, `Icon`. Un fichier par composant,
+  `export default`, `className` accepté en dernier pour surcharger, fusion via
+  `cn()` (`src/lib/cn.js`). `Button` prend `as` (`<Button as={Link} to="…">`).
+  `Icon` porte un dictionnaire de tracés SVG 24×24 en `currentColor` : ajouter une
+  icône = ajouter une entrée dans `paths`. Les icônes de `public/icons.svg` sont
+  celles du template Vite et ne servent pas à l'UI.
+- **Rythme** : chaque page commence par `<PageHeader>`, les grilles utilisent
+  `gap-4`, les cartes `rounded-xl border border-slate-200 bg-white`.
+
+## Layout
+
+`src/components/layout/AppLayout.jsx` est monté comme route parente (`element`) de
+toutes les routes authentifiées et rend `<Outlet />` — les pages ne rendent que leur
+contenu, jamais la nav. Sidebar fixe à partir de `md`, tiroir avec overlay en dessous ;
+la topbar est collante et affiche le titre de la section courante.
+
+La navigation est déclarée une seule fois dans `layout/navItems.js`
+(`navItems`, `navItemsSecondary`, `currentNavTitle`) : ajouter une entrée d'onglet
+se fait là, pas dans `Sidebar.jsx`.
 
 Les SVG d'icônes sont dans `public/icons.svg` et référencés par `<use href="/icons.svg#id">`,
 pas importés.
@@ -93,8 +128,12 @@ futur layout parent ne soit pas remonté à chaque navigation.
   `ProtectedRoute` arrivera, `/portfolio/:slug` doit rester en dehors — c'est la seule
   route publique, elle tape `/api/public/portfolio/:slug` et ne doit ni charger le client
   Supabase ni attendre une session.
-- **Aucun layout partagé** : chaque page est montée seule, il n'y a pas encore de nav
-  commune ni de `<Outlet />`.
+- Le layout partagé existe (voir section Layout), mais **seul `Dashboard` a du contenu** :
+  les autres pages renvoient encore `null` et s'affichent donc comme une zone vide
+  dans la coquille. `/login`, `/signup`, `/verify-code`, `/portfolio/:slug` et la 404
+  sont volontairement hors du layout.
+- Les chiffres du Dashboard sont des **données factices** en haut de
+  `src/pages/Dashboard.jsx` (bloc commenté), à remplacer par les appels API.
 - **Supabase n'est pas installé** : les pages d'auth sont vides. `@supabase/supabase-js`
   reste à ajouter, avec `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` dans
   `.env.example` (la clé anon est publique par design, ce n'est pas un secret).
