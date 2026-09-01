@@ -259,9 +259,9 @@ futur layout parent ne soit pas remonté à chaque navigation.
   route publique, elle tape `/api/public/portfolio/:slug` et ne doit ni charger le client
   Supabase ni attendre une session.
 - Le layout partagé existe (voir section Layout), mais seuls **`Dashboard`,
-  `Missions`, `MissionDetail`, `Documents`, `Projets`, `ProjetDetail` et
-  `ParametresSeuil`** ont du contenu :
-  les autres pages renvoient encore `null` et
+  `Missions`, `MissionDetail`, `Documents`, `Projets`, `ProjetDetail`,
+  `ParametresSeuil`, `PortfoliosAdmin`, `PortfolioAdminDetail` et `PortfolioPublic`**
+  ont du contenu : les autres pages (`Login`, `Signup`, `VerifyCode`) renvoient encore `null` et
   s'affichent donc comme une zone vide dans la coquille. `/login`, `/signup`, `/verify-code`, `/portfolio/:slug` et la 404
   sont volontairement hors du layout.
 - Le Dashboard et Missions lisent encore les **mocks** (`VITE_USE_MOCKS`), voir *Données & API* :
@@ -276,9 +276,11 @@ futur layout parent ne soit pas remonté à chaque navigation.
   **pas** un `projet_id` sur `document` : `document` est le coffre privé des
   justificatifs et `/portfolio/:slug` est public. Quand l'API renverra `medias`,
   seule cette fonction change.
-- **Aucun `errorElement`** sur les routes : tant que les mocks servent les données le
-  `loader` ne peut pas échouer, mais dès le branchement sur l'API une erreur réseau
-  affichera l'écran d'erreur par défaut de react-router. À ajouter avec la garde d'auth.
+- **`errorElement` seulement sur `/portfolio/:slug`** : cette route publique exporte un
+  `ErrorBoundary` (le helper `page()` de `router.jsx` le branche comme `loader`), parce
+  qu'un visiteur sans compte ne doit pas tomber sur l'écran de dev de react-router quand
+  le slug est inconnu ou la page désactivée. Les routes authentifiées n'en ont pas encore :
+  à ajouter avec la garde d'auth, dès que le `loader` pourra échouer sur une erreur réseau.
 - La `Topbar` affiche un nom et un avatar **en dur** : à brancher sur
   `users.first_name` / `last_name` quand la session existera.
 - **Supabase n'est pas installé** : les pages d'auth sont vides. `@supabase/supabase-js`

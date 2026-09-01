@@ -6,9 +6,11 @@ import AppLayout from './components/layout/AppLayout.jsx'
 // Le module de page peut exporter un `loader` nomme a cote de son composant par
 // defaut : il est alors branche sur la route et ses donnees sont pretes avant
 // le premier rendu (pas d'etat de chargement a gerer dans la page).
+// Une page peut aussi exporter `ErrorBoundary` : il est branche sur sa route et
+// remplace l'ecran d'erreur par defaut de react-router.
 const page = (importer) => async () => {
   const mod = await importer()
-  return { Component: mod.default, loader: mod.loader }
+  return { Component: mod.default, loader: mod.loader, ErrorBoundary: mod.ErrorBoundary }
 }
 
 export const router = createBrowserRouter([

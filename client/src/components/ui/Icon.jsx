@@ -97,6 +97,8 @@ const paths = {
   close: <path d="M6 6l12 12M18 6L6 18" />,
   chevronRight: <path d="M9 5l7 7-7 7" />,
   chevronLeft: <path d="M15 5l-7 7 7 7" />,
+  chevronUp: <path d="M5 15l7-7 7 7" />,
+  chevronDown: <path d="M5 9l7 7 7-7" />,
   agenda: (
     <>
       <rect x="3" y="5" width="18" height="16" rx="2" />

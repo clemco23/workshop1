@@ -359,9 +359,10 @@ export const projets = [
   },
 ]
 
-// portfolio_public.user_id est @unique dans le schema : un seul portfolio par
-// utilisateur. Le mock est quand meme un tableau, pour que les pages de liste
-// fonctionnent — a trancher cote schema (voir CLAUDE.md).
+// Plusieurs pages publiques par utilisateur : c'est le slug qui est unique, pas
+// le user (cf. server/prisma/schema.prisma). Une page en ligne et une hors ligne,
+// pour que les deux etats soient couverts — un portfolio `actif: false` doit
+// repondre 404 en public, pas une page vide.
 export const portfolios = [
   {
     id: 'f0e1d2c3-b4a5-4968-8776-5a4b3c2d1e00',
@@ -371,6 +372,14 @@ export const portfolios = [
     actif: true,
     createdAt: jour(-9, 14),
   },
+  {
+    id: 'f0e1d2c3-b4a5-4968-8776-5a4b3c2d1e01',
+    userId: USER_ID,
+    slug: 'theo-marchand-doc',
+    titrePage: null, // titre_page est nullable : le slug sert alors de titre
+    actif: false,
+    createdAt: jour(-4, 3),
+  },
 ]
 
 // Table de jonction : quels projets figurent sur le portfolio, et dans quel ordre.
@@ -378,6 +387,9 @@ export const portfolioProjets = [
   { id: 'aa000000-0000-4000-8000-000000000001', portfolioPublicId: portfolios[0].id, projetId: P(1), ordre: 1 },
   { id: 'aa000000-0000-4000-8000-000000000002', portfolioPublicId: portfolios[0].id, projetId: P(5), ordre: 2 },
   { id: 'aa000000-0000-4000-8000-000000000003', portfolioPublicId: portfolios[0].id, projetId: P(2), ordre: 3 },
+  // Un meme projet peut figurer dans deux portfolios, a des positions differentes.
+  { id: 'aa000000-0000-4000-8000-000000000004', portfolioPublicId: portfolios[1].id, projetId: P(3), ordre: 1 },
+  { id: 'aa000000-0000-4000-8000-000000000005', portfolioPublicId: portfolios[1].id, projetId: P(1), ordre: 2 },
 ]
 
 export const db = {
