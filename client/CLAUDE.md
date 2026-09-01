@@ -48,7 +48,7 @@ client/
     components/
       ui/             # primitives réutilisables (Card, Button, Badge, Icon, …)
       layout/         # AppLayout, Sidebar, Topbar, navItems.js
-    pages/            # un composant par route (seul Dashboard est rempli)
+    pages/            # un composant par route (Dashboard et Missions sont remplis)
     assets/           # images importées par le code (hero.png, logos)
 ```
 
@@ -63,7 +63,7 @@ Tout l'habillage passe par trois choses, à réutiliser au lieu de recréer du s
   palette est `slate-*` (fond `slate-50`, surfaces blanches, bordures `slate-200`,
   texte `slate-900` / `slate-500`).
 - **Primitives** dans `src/components/ui/` : `Card`, `StatCard`, `Button`, `Badge`,
-  `ProgressBar`, `PageHeader`, `EmptyState`, `Icon`. Un fichier par composant,
+  `ProgressBar`, `PageHeader`, `EmptyState`, `Icon`, `Tabs`, `Select`. Un fichier par composant,
   `export default`, `className` accepté en dernier pour surcharger, fusion via
   `cn()` (`src/lib/cn.js`). `Button` prend `as` (`<Button as={Link} to="…">`).
   `Icon` porte un dictionnaire de tracés SVG 24×24 en `currentColor` : ajouter une
@@ -151,6 +151,61 @@ La source de vérité du modèle est `../server/prisma/schema.prisma`. Le client
 - `mission` n'a **pas de titre** : l'intitulé affiché dans les listes est
   `client_production`, complété par le type et la période.
 
+## Dataviz
+
+Les couleurs de graphe vivent dans `src/lib/viz.js`, **pas** dans les composants :
+un graphe lit un rôle (`couleurType(type)`), jamais un hex.
+
+- Palette catégorielle validée sur fond blanc (la surface des cartes) :
+  `#4f46e5` (= `brand-600`, intermittence) ↔ `#eb6834` (freelance). ΔE CVD 31,4
+  protan / 34,6 tritan, ΔE vision normale 39,2, contraste ≥ 3:1 pour les deux.
+  Toute nouvelle paire de séries doit repasser ce contrôle, pas être choisie à l'œil.
+- **La teinte suit l'entité, jamais son rang** : filtrer ne repeint jamais les
+  séries restantes.
+- Un seul axe de valeur par graphe, jamais deux échelles y.
+- La teinte porte le **type** ; le **statut** est un second encodage (remplissage
+  atténué pour une mission seulement proposée). Aucune information n'est portée par
+  la couleur seule : type et statut sont aussi écrits en texte dans la vue Liste,
+  qui sert de table équivalente au graphe.
+- `tone: 'brand'` est réservé aux teintes de série : les badges de statut utilisent
+  `warning` / `success` / `neutral`, pour qu'un statut ne prenne pas la couleur d'un type.
+- Specs de marque : barres ≤ 24 px, bouts arrondis 4 px, grille et axes en filet
+  continu d'un cran au-dessus de la surface (jamais en pointillés), légende dès deux
+  séries, infobulle au survol.
+- Les filtres sont sur **une seule rangée au-dessus** de ce qu'ils cadrent, jamais
+  dans la carte d'un graphe : les deux vues rendent toujours la même sélection.
+
+`recharts` est la bibliothèque retenue (déjà dans les dépendances) ; chart.js a été
+écarté pour ne pas en avoir deux. Le chunk de la page Missions pèse ~365 kB à cause
+de recharts — acceptable parce que le lazy loading par route ne le charge que là.
+
+### Agenda mensuel
+
+`MissionsAgenda` est écrit à la main, **sans bibliothèque de calendrier** :
+react-big-calendar et FullCalendar apportent leur propre CSS, qui se bat avec
+Tailwind, pour une grille de 6 × 7 cases plus courte à écrire qu'à configurer.
+
+La logique est dans `src/lib/missions.js`, en fonctions pures :
+
+- **Tout se calcule en UTC**, et les jours se comparent par leur clé `'AAAA-MM-JJ'`
+  (`cleJour`). Les dates de l'API sont en UTC : passer par l'heure locale ferait
+  basculer une mission d'un jour à l'autre selon le fuseau du navigateur — à l'ouest
+  de Greenwich, minuit UTC est la veille au soir.
+- `bornesMission` donne `[début, fin]`, en remplaçant une `date_fin` nulle par
+  aujourd'hui (mission ouverte).
+- `construireMois` attribue à chaque mission un **couloir stable par semaine**
+  (placement au premier couloir libre, dans l'ordre des dates de début). Sans ça,
+  une mission qui se poursuit remonte d'une ligne dès qu'une autre se termine et sa
+  bande part en escalier. Les trous deviennent des couloirs `null` explicites, que le
+  composant rend comme des espaceurs de même hauteur.
+- Tous les couloirs ont la **même hauteur** (`h-5`), pastille nommée comme
+  continuation, sinon l'alignement horizontal casse. Le nom n'est écrit qu'au premier
+  jour de la mission et rappelé en début de semaine ; les bouts arrondis ne marquent
+  que les extrémités réelles (`debute` / `termine`), pour que la mission se lise comme
+  une bande continue.
+- Le nombre de semaines s'adapte (4 à 6) pour ne jamais afficher une rangée
+  entièrement hors du mois.
+
 ## Routing
 
 Tout est déclaré dans `src/router.jsx` avec `createBrowserRouter` (react-router 7,
@@ -195,11 +250,11 @@ futur layout parent ne soit pas remonté à chaque navigation.
   `ProtectedRoute` arrivera, `/portfolio/:slug` doit rester en dehors — c'est la seule
   route publique, elle tape `/api/public/portfolio/:slug` et ne doit ni charger le client
   Supabase ni attendre une session.
-- Le layout partagé existe (voir section Layout), mais **seul `Dashboard` a du contenu** :
-  les autres pages renvoient encore `null` et s'affichent donc comme une zone vide
-  dans la coquille. `/login`, `/signup`, `/verify-code`, `/portfolio/:slug` et la 404
+- Le layout partagé existe (voir section Layout), mais seuls **`Dashboard` et
+  `Missions`** ont du contenu : les autres pages renvoient encore `null` et
+  s'affichent donc comme une zone vide dans la coquille. `/login`, `/signup`, `/verify-code`, `/portfolio/:slug` et la 404
   sont volontairement hors du layout.
-- Le Dashboard lit encore les **mocks** (`VITE_USE_MOCKS`), voir *Données & API* :
+- Le Dashboard et Missions lisent encore les **mocks** (`VITE_USE_MOCKS`), voir *Données & API* :
   le back n'expose que `/api/health`, l'endpoint `GET /api/dashboard`
   (`{ user, configSeuil, missions, documents }`) reste à écrire.
 - **Aucun `errorElement`** sur les routes : tant que les mocks servent les données le

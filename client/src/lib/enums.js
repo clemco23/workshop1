@@ -8,10 +8,13 @@ export const MISSION_TYPE = {
   FREELANCE: { label: 'Freelance', tone: 'neutral' },
 }
 
+// Le `tone` brand est reserve a la teinte de *type* dans les graphes (cf.
+// src/lib/viz.js) : un badge de statut ne le reutilise pas, sinon un statut
+// prend la couleur d'un type.
 export const MISSION_STATUT = {
   PROPOSED: { label: 'Proposee', tone: 'warning' },
-  CONFIRMED: { label: 'Confirmee', tone: 'brand' },
-  TERMINATED: { label: 'Terminee', tone: 'success' },
+  CONFIRMED: { label: 'Confirmee', tone: 'success' },
+  TERMINATED: { label: 'Terminee', tone: 'neutral' },
 }
 
 export const DOCUMENT_CATEGORIE = {
