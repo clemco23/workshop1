@@ -3,7 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum MissionType {
@@ -32,19 +34,34 @@ enum ProjectTag {
 
 model User {
   id         String   @id @default(uuid())
-  firstName  String   @map("first_name")
-  lastName   String   @map("last_name")
+  firstName  String?  @map("first_name")
+  lastName   String?  @map("last_name")
   email      String   @unique
   createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
-  missions   Mission[]
-  documents  Document[]
-  projects   Project[]
-  settings   ConfigSeuil?
-  portfolios PortfolioPublic?
-  codes      Code[]
+  missions    Mission[]
+  documents   Document[]
+  projects    Project[]
+  settings    ConfigSeuil?
+  portfolios  PortfolioPublic?
+  codes       EmailVerificationCode[]
 
   @@map("users")
+}
+
+model EmailVerificationCode {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  codeHash  String    @map("code_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verification_code")
 }
 
 model ConfigSeuil {
@@ -148,14 +165,3 @@ model PortfolioPublicProjet {
   @@map("portfolio_public_projet")
 }
 
-model Code {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  code      String
-  expireAt  DateTime @map("expire_at")
-  used      Boolean  @default(false)
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("codes")
-}
