@@ -7,11 +7,16 @@ import Icon from '../components/ui/Icon.jsx'
 import Tabs from '../components/ui/Tabs.jsx'
 import EmptyState from '../components/ui/EmptyState.jsx'
 import ProjetCard from '../components/projets/ProjetCard.jsx'
+import ProjetFormModal from '../components/projets/ProjetFormModal.jsx'
 import { fetchProjets } from '../api/projets.js'
+import { fetchMissions } from '../api/missions.js'
 import { PROJET_TAG } from '../lib/enums.js'
 
 export async function loader() {
-  return { projets: await fetchProjets() }
+  // Les missions ne servent qu'au selecteur « mission liee » du formulaire de
+  // creation (projet.mission_id est nullable).
+  const [projets, missions] = await Promise.all([fetchProjets(), fetchMissions()])
+  return { projets, missions }
 }
 
 // Le filtre par tag est le seul prevu cote API (GET /api/projets?tag=).
@@ -21,8 +26,9 @@ const onglets = [
 ]
 
 function Projets() {
-  const { projets } = useLoaderData()
+  const { projets, missions } = useLoaderData()
   const [tag, setTag] = useState('')
+  const [creation, setCreation] = useState(false)
 
   // Projets charges une fois puis filtres en memoire : le filtrage est instantane
   // et ne redemande rien au serveur (fetchProjets({ tag }) le fera si le volume
@@ -35,12 +41,17 @@ function Projets() {
         title="Projets"
         subtitle={`${projets.length} fiche(s) projet — la matiere de tes pages publiques`}
       >
-        {/* POST /api/projets n'existe pas encore, ni l'ecran de creation. */}
-        <Button disabled title="Creation a venir">
+        <Button onClick={() => setCreation(true)}>
           <Icon name="plus" className="size-4" />
           Nouvelle fiche
         </Button>
       </PageHeader>
+
+      <ProjetFormModal
+        ouvert={creation}
+        onClose={() => setCreation(false)}
+        missions={missions}
+      />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <Tabs options={onglets} value={tag} onChange={setTag} ariaLabel="Filtrer par tag" />

@@ -51,8 +51,11 @@ function MissionFormModal({ ouvert, onClose, heuresJourDefaut }) {
           <Button variant="secondary" onClick={fermer}>
             Annuler
           </Button>
+          {/* Toujours desactive : l'endpoint n'existe pas. Un bouton actif qui ne
+              fait rien serait pire qu'un bouton grise. `valide` ne sert donc qu'a
+              expliquer *pourquoi* dans l'infobulle, en plus des erreurs de champ. */}
           <Button
-            disabled={!valide}
+            disabled
             title={
               valide
                 ? "Creation a venir : POST /api/missions n'est pas encore en ligne"
