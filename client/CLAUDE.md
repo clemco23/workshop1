@@ -42,7 +42,9 @@ client/
     App.jsx           # composant racine : rend <RouterProvider router={router} />
     router.jsx        # définition de toutes les routes (createBrowserRouter)
     index.css         # Tailwind + tokens du design system (@theme)
-    lib/cn.js         # helper de concaténation de classes
+    api/              # instance axios + un module par ressource
+    lib/              # cn, format, enums, dérivations métier
+    mocks/            # données simulées, à la forme du JSON de l'API
     components/
       ui/             # primitives réutilisables (Card, Button, Badge, Icon, …)
       layout/         # AppLayout, Sidebar, Topbar, navItems.js
@@ -84,6 +86,49 @@ se fait là, pas dans `Sidebar.jsx`.
 Les SVG d'icônes sont dans `public/icons.svg` et référencés par `<use href="/icons.svg#id">`,
 pas importés.
 
+## Données & API
+
+La source de vérité du modèle est `../server/prisma/schema.prisma`. Le client s'y cale :
+
+- **Formes** : l'API renvoie du camelCase (`client_production` → `clientProduction`),
+  les enums en **chaînes** (`'CONFIRMED'`, `'INTERMITTENCE'`) et — piège — les
+  `Decimal` Prisma en **chaînes** (`'40.00'`, pas `40`). D'où `num()` dans
+  `src/lib/format.js`, à passer sur tout champ décimal avant calcul ou affichage.
+- **Enums** : `src/lib/enums.js` duplique les quatre enums du schéma
+  (`MissionType`, `MissionStatus`, `DocumentCategory`, `ProjectTag`) avec leur
+  libellé FR et leur `tone` de `Badge`. Modifier un enum côté serveur impose de
+  mettre ce fichier à jour ; `enumMeta()` évite le crash en affichant la valeur
+  brute si le client est en retard.
+- **Appels** : `src/api/client.js` expose l'instance axios (`baseURL:
+  VITE_API_URL`) et le drapeau `USE_MOCKS`. Un module par ressource dans
+  `src/api/`, qui renvoie le mock ou tape l'API selon ce drapeau — les pages ne
+  connaissent ni axios ni les mocks.
+- **Mocks** : `src/mocks/` contient les données simulées, écrites à la forme exacte
+  du JSON attendu (uuid, ISO 8601, décimaux en chaînes). Leurs dates sont
+  **relatives au mois courant** pour que la démo ne se périme pas. Basculer sur le
+  vrai back = `VITE_USE_MOCKS=false`, rien d'autre à toucher dans le client.
+- **Dérivations** : les agrégats sont calculés côté client par des fonctions pures
+  (`src/lib/dashboard.js`), à partir des lignes brutes. L'endpoint n'a donc qu'à
+  renvoyer les lignes, pas des totaux — et la logique reste testable sans réseau.
+- **Chargement** : une page peut exporter un `loader` nommé à côté de son composant
+  par défaut ; le helper `page()` de `router.jsx` le branche sur la route, donc les
+  données sont prêtes avant le premier rendu (pas d'état de chargement dans la page).
+  `loader`, `action` et `ErrorBoundary` sont autorisés en export dans `.oxlintrc.json`.
+
+### Règles métier déjà câblées
+
+- Le seuil de `config_seuil` est **annuel** (`seuil_heures_annuel`, défaut 507 h =
+  seuil d'intermittence), évalué sur une **fenêtre glissante** de `fenetre_mois` mois.
+  Ce n'est pas un quota mensuel.
+- Seules les missions `INTERMITTENCE` en statut `CONFIRMED` ou `TERMINATED` comptent
+  dans ce seuil (cf. `STATUTS_ACQUIS`) : une mission `PROPOSED` est ignorée.
+- `mission.heures` est nullable : à défaut, les heures valent
+  `nb_jours × config_seuil.heures_jour_defaut` (`heuresMission()`).
+- Il n'y a **pas de table client** : `mission.client_production` est un texte libre,
+  c'est lui qui sert de clé de regroupement dans la répartition.
+- `mission` n'a **pas de titre** : l'intitulé affiché dans les listes est
+  `client_production`, complété par le type et la période.
+
 ## Routing
 
 Tout est déclaré dans `src/router.jsx` avec `createBrowserRouter` (react-router 7,
@@ -114,7 +159,7 @@ Garder cette forme pour toute nouvelle route.
 | `/projets/:id`          | `ProjetDetail`         | détail / édition d'une fiche projet           |
 | `/portfolios`           | `PortfoliosAdmin`      | liste des pages publiques créées              |
 | `/portfolios/:id`       | `PortfolioAdminDetail` | sélection et réordonnancement des projets     |
-| `/profil`               | `Profil`               | `nom_affiche`, `bio`, `avatar_url`            |
+| `/profil`               | `Profil`               | `first_name`, `last_name`, `email`            |
 | `/parametres`           | `ParametresSeuil`      | seuils et fenêtre de mois                     |
 | `/portfolio/:slug`      | `PortfolioPublic`      | **seule route publique**                      |
 | `*`                     | `NotFound`             | 404                                           |
@@ -132,8 +177,14 @@ futur layout parent ne soit pas remonté à chaque navigation.
   les autres pages renvoient encore `null` et s'affichent donc comme une zone vide
   dans la coquille. `/login`, `/signup`, `/verify-code`, `/portfolio/:slug` et la 404
   sont volontairement hors du layout.
-- Les chiffres du Dashboard sont des **données factices** en haut de
-  `src/pages/Dashboard.jsx` (bloc commenté), à remplacer par les appels API.
+- Le Dashboard lit encore les **mocks** (`VITE_USE_MOCKS`), voir *Données & API* :
+  le back n'expose que `/api/health`, l'endpoint `GET /api/dashboard`
+  (`{ user, configSeuil, missions, documents }`) reste à écrire.
+- **Aucun `errorElement`** sur les routes : tant que les mocks servent les données le
+  `loader` ne peut pas échouer, mais dès le branchement sur l'API une erreur réseau
+  affichera l'écran d'erreur par défaut de react-router. À ajouter avec la garde d'auth.
+- La `Topbar` affiche un nom et un avatar **en dur** : à brancher sur
+  `users.first_name` / `last_name` quand la session existera.
 - **Supabase n'est pas installé** : les pages d'auth sont vides. `@supabase/supabase-js`
   reste à ajouter, avec `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` dans
   `.env.example` (la clé anon est publique par design, ce n'est pas un secret).
