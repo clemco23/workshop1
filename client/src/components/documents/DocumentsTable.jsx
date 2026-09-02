@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Badge from '../ui/Badge.jsx'
 import Icon from '../ui/Icon.jsx'
@@ -27,6 +27,39 @@ function DocumentsTable({ documents, onSupprime }) {
   // attend le lien.
   const [enCours, setEnCours] = useState(null)
   const [erreur, setErreur] = useState(null)
+  const [apercu, setApercu] = useState(null)
+  const urlsApercu = useRef(new Map())
+  const documentSurvole = useRef(null)
+
+  async function afficherApercu(document, event) {
+    const famille = familleFichier(document.mimeType)
+    if (famille !== 'pdf' && famille !== 'image') return
+
+    documentSurvole.current = document.id
+    const x = Math.min(event.clientX + 18, window.innerWidth - 340)
+    const y = Math.min(event.clientY + 18, window.innerHeight - 430)
+    const urlEnCache = urlsApercu.current.get(document.id)
+
+    setApercu({ document, famille, url: urlEnCache ?? null, x, y })
+    if (urlEnCache) return
+
+    try {
+      const url = await documentUrl(document.id)
+      urlsApercu.current.set(document.id, url)
+      if (documentSurvole.current === document.id) {
+        setApercu({ document, famille, url, x, y })
+      }
+    } catch {
+      // La previsualisation est un confort : le telechargement reste disponible
+      // si le lien signe ne peut pas etre obtenu au survol.
+      if (documentSurvole.current === document.id) setApercu(null)
+    }
+  }
+
+  function cacherApercu() {
+    documentSurvole.current = null
+    setApercu(null)
+  }
 
   async function telecharger(document) {
     if (enCours) return
@@ -86,7 +119,12 @@ function DocumentsTable({ documents, onSupprime }) {
               const categorie = enumMeta(DOCUMENT_CATEGORIE, document.categorie)
 
               return (
-                <tr key={document.id} className="transition-colors hover:bg-slate-50">
+                <tr
+                  key={document.id}
+                  className="transition-colors hover:bg-slate-50"
+                  onMouseEnter={(event) => afficherApercu(document, event)}
+                  onMouseLeave={cacherApercu}
+                >
                   <td className={`${td} font-medium text-slate-900`}>
                     <span className="flex items-center gap-2.5">
                       <span className="rounded-lg bg-slate-100 p-1.5 text-slate-500">
@@ -95,7 +133,9 @@ function DocumentsTable({ documents, onSupprime }) {
                           className="size-4"
                         />
                       </span>
-                      <span className="truncate">{document.nomOriginal}</span>
+                      <span className="truncate" title="Survole la ligne pour previsualiser">
+                        {document.nomOriginal}
+                      </span>
                     </span>
                   </td>
 
@@ -155,6 +195,37 @@ function DocumentsTable({ documents, onSupprime }) {
           </tbody>
         </table>
       </div>
+
+      {apercu && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed z-50 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+          style={{ left: apercu.x, top: apercu.y }}
+        >
+          <div className="border-b border-slate-100 px-3 py-2 text-xs font-medium text-slate-700">
+            {apercu.document.nomOriginal}
+          </div>
+          {apercu.url ? (
+            apercu.famille === 'image' ? (
+              <img
+                src={apercu.url}
+                alt=""
+                className="max-h-80 w-full object-contain"
+              />
+            ) : (
+              <iframe
+                title={`Apercu de ${apercu.document.nomOriginal}`}
+                src={`${apercu.url}#page=1&view=FitH`}
+                className="h-96 w-full bg-white"
+              />
+            )
+          ) : (
+            <div className="flex h-48 items-center justify-center text-sm text-slate-500">
+              Chargement de l'apercu…
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Une seule boite pour toute la table : `aSupprimer` porte la ligne visee.
           La suppression retire aussi le fichier du stockage cote serveur. */}
