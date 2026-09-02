@@ -1,29 +1,47 @@
-import { api, USE_MOCKS } from './client.js'
-import { documents, missions } from '../mocks/db.js'
+import { api } from './client.js'
 
-// Contrats attendus cote server :
-//   GET /api/documents?categorie=&missionId=  -> Document[]
-//   POST /api/documents (multipart)           -> Document      (upload, a faire)
-//   GET /api/documents/:id/url                -> { url }       (lien signe de telechargement)
+// Contrats cote server (voir ../../server/CLAUDE.md) :
+//   GET    /api/documents?categorie=&missionId=  -> Document[] (+ mission liee)
+//   POST   /api/documents                        -> 201 Document  (multipart)
+//   GET    /api/documents/:id                    -> Document
+//   GET    /api/documents/:id/url                -> { url }       (lien signe, 1 h)
+//   PATCH  /api/documents/:id                    -> Document      (multipart si `file`)
+//   DELETE /api/documents/:id                    -> 204 (supprime aussi le fichier)
 //
-// `fichier_path` est un chemin de stockage, pas une URL : le back devra rendre
-// un lien signe, le client ne construit jamais l'URL lui-meme.
+// `missionId=aucune` liste les documents non rattaches.
+//
+// `fichierPath` est un chemin de stockage, pas une URL : le coffre est prive, le
+// client ne fabrique jamais l'adresse d'un justificatif — il demande un lien
+// signe a `documentUrl()`.
 
 export async function fetchDocuments(filtres = {}) {
-  if (!USE_MOCKS) {
-    const { data } = await api.get('/api/documents', { params: filtres })
-    return data
-  }
+  const { data } = await api.get('/api/documents', { params: filtres })
+  return data
+}
 
-  const { categorie, missionId } = filtres
+// Depot d'un justificatif, en `multipart/form-data` :
+//   file       le fichier (le serveur en tire nomOriginal, taille, mimeType)
+//   categorie  valeur de DocumentCategory
+//   missionId  facultatif — mission_id est nullable
+export async function createDocument({ fichier, categorie, missionId }) {
+  const corps = new FormData()
+  corps.append('file', fichier)
+  corps.append('categorie', categorie)
+  if (missionId) corps.append('missionId', missionId)
 
-  return documents
-    .filter((d) => !categorie || d.categorie === categorie)
-    .filter((d) => !missionId || d.missionId === missionId)
-    .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))
-    // Confort d'affichage : le nom du client de la mission liee, quand il y en a.
-    .map((d) => ({
-      ...d,
-      mission: d.missionId ? (missions.find((m) => m.id === d.missionId) ?? null) : null,
-    }))
+  // Pas de Content-Type pose a la main : axios doit ecrire lui-meme la
+  // frontiere du multipart.
+  const { data } = await api.post('/api/documents', corps)
+  return data
+}
+
+// Lien de telechargement, signe et valable une heure. Redemande a chaque clic
+// plutot que garde en memoire : un lien perime ne doit jamais etre presente.
+export async function documentUrl(id) {
+  const { data } = await api.get(`/api/documents/${id}/url`)
+  return data.url
+}
+
+export async function deleteDocument(id) {
+  await api.delete(`/api/documents/${id}`)
 }

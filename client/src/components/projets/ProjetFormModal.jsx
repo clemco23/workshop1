@@ -1,12 +1,20 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import Modal from '../ui/Modal.jsx'
 import Button from '../ui/Button.jsx'
 import Input from '../ui/Input.jsx'
 import Select from '../ui/Select.jsx'
 import { PROJET_TAG, PROJET_TYPE, enumMeta } from '../../lib/enums.js'
-import { PROJET_VIDE, validerProjet } from '../../lib/projetForm.js'
+import {
+  PROJET_VIDE,
+  estModifie,
+  validerProjet,
+  versFormulaire,
+  versPayload,
+} from '../../lib/projetForm.js'
+import { createProjet, updateProjet } from '../../api/projets.js'
 import { typeMediaDepuisUrl } from '../../lib/medias.js'
 import { formatPeriode } from '../../lib/format.js'
+import { messageErreur } from '../../lib/erreurs.js'
 
 const optionsTag = Object.entries(PROJET_TAG).map(([value, meta]) => ({
   value,
@@ -18,20 +26,72 @@ const optionsType = Object.entries(PROJET_TYPE).map(([value, meta]) => ({
   label: meta.label,
 }))
 
-// Creation d'une fiche projet. Comme pour les missions, le formulaire se remplit
-// et se valide entierement, mais POST /api/projets n'est pas ecrit : le bouton
-// reste desactive plutot que de faire disparaitre la saisie.
+// Creation *et* edition d'une fiche projet : memes champs, memes regles, seul
+// l'intitule change. Passer `projet` bascule en edition.
 //
-// Quand l'endpoint arrivera : `versPayload(formulaire)`, rien d'autre a ecrire ici.
-function ProjetFormModal({ ouvert, onClose, missions = [] }) {
-  const [formulaire, setFormulaire] = useState(PROJET_VIDE)
+// Le formulaire ne saisit qu'un `link`. Le serveur accepte aussi un fichier
+// (multipart, champ `file`) pour les types IMAGE / PDF / VIDEO, qu'il pousse
+// dans Storage avant d'en ranger l'URL publique dans `link` — le jour ou un
+// selecteur de fichier arrivera ici, c'est le seul endroit a changer.
+//
+// `onEnregistre` recoit la fiche renvoyee par l'API : c'est la page qui decide
+// quoi en faire (revalider, naviguer).
+function ProjetFormModal({ ouvert, onClose, missions = [], projet = null, onEnregistre }) {
+  const idFormulaire = useId()
+  const edition = projet != null
+  const valeursInitiales = useMemo(
+    () => (edition ? versFormulaire(projet) : PROJET_VIDE),
+    [edition, projet],
+  )
+
+  const [formulaire, setFormulaire] = useState(valeursInitiales)
+  const [envoi, setEnvoi] = useState(false)
+  const [erreurApi, setErreurApi] = useState(null)
   const { erreurs, valide } = useMemo(() => validerProjet(formulaire), [formulaire])
+
+  // Re-partir des valeurs de la fiche a chaque ouverture, comme MissionFormModal :
+  // ajustement pendant le rendu plutot qu'un effet, qui rendrait deux fois.
+  const [etaitOuvert, setEtaitOuvert] = useState(ouvert)
+  if (ouvert !== etaitOuvert) {
+    setEtaitOuvert(ouvert)
+    if (ouvert) {
+      setFormulaire(valeursInitiales)
+      setErreurApi(null)
+    }
+  }
 
   const setChamp = (cle) => (valeur) => setFormulaire((etat) => ({ ...etat, [cle]: valeur }))
 
+  const modifie = edition ? estModifie(formulaire, projet) : true
+
   const fermer = () => {
-    setFormulaire(PROJET_VIDE)
+    if (envoi) return
+    setFormulaire(valeursInitiales)
+    setErreurApi(null)
     onClose()
+  }
+
+  async function enregistrer(event) {
+    event.preventDefault()
+    if (!valide || !modifie || envoi) return
+
+    setEnvoi(true)
+    setErreurApi(null)
+
+    try {
+      const payload = versPayload(formulaire)
+      const enregistree = edition
+        ? await updateProjet(projet.id, payload)
+        : await createProjet(payload)
+
+      onEnregistre?.(enregistree)
+      setFormulaire(valeursInitiales)
+      onClose()
+    } catch (error) {
+      setErreurApi(messageErreur(error))
+    } finally {
+      setEnvoi(false)
+    }
   }
 
   // mission_id est nullable : une fiche perso n'a pas de mission.
@@ -56,31 +116,35 @@ function ProjetFormModal({ ouvert, onClose, missions = [] }) {
     <Modal
       ouvert={ouvert}
       onClose={fermer}
-      titre="Nouvelle fiche projet"
-      description="Une realisation a montrer : titre, date et lien suffisent."
+      titre={edition ? 'Modifier la fiche' : 'Nouvelle fiche projet'}
+      description={
+        edition ? projet.titre : 'Une realisation a montrer : titre, date et lien suffisent.'
+      }
       footer={
         <>
-          <Button variant="secondary" onClick={fermer}>
+          <Button variant="secondary" onClick={fermer} disabled={envoi}>
             Annuler
           </Button>
-          {/* Toujours desactive : l'endpoint n'existe pas. Un bouton actif qui ne
-              fait rien serait pire qu'un bouton grise. `valide` ne sert donc qu'a
-              expliquer *pourquoi* dans l'infobulle, en plus des erreurs de champ. */}
+          {/* Le pied du <dialog> est hors du <form> : `form` relie quand meme le
+              bouton a la saisie. */}
           <Button
-            disabled
+            type="submit"
+            form={idFormulaire}
+            disabled={!valide || !modifie || envoi}
             title={
-              valide
-                ? "Creation a venir : POST /api/projets n'est pas encore en ligne"
-                : 'Corrige les champs en rouge'
+              !valide
+                ? 'Corrige les champs en rouge'
+                : !modifie
+                  ? 'Aucune modification a enregistrer'
+                  : undefined
             }
           >
-            Creer la fiche
+            {envoi ? 'Enregistrement…' : edition ? 'Enregistrer' : 'Creer la fiche'}
           </Button>
         </>
       }
     >
-      {/* Pas de <form onSubmit> tant qu'il n'y a rien a envoyer. */}
-      <div className="grid gap-4">
+      <form id={idFormulaire} onSubmit={enregistrer} noValidate className="grid gap-4">
         <Input
           label="Titre"
           value={formulaire.titre}
@@ -159,10 +223,19 @@ function ProjetFormModal({ ouvert, onClose, missions = [] }) {
           </p>
         </div>
 
-        <p className="border-t border-slate-100 pt-3 text-xs text-amber-700">
-          Creation indisponible : POST /api/projets n'est pas encore en ligne.
-        </p>
-      </div>
+        {erreurApi && (
+          <p
+            role="alert"
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+          >
+            {erreurApi}
+          </p>
+        )}
+
+        {edition && !modifie && (
+          <p className="text-xs text-slate-500">Aucune modification pour l'instant.</p>
+        )}
+      </form>
     </Modal>
   )
 }

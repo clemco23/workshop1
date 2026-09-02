@@ -1,20 +1,28 @@
-import { Link, useLoaderData } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useLoaderData, useNavigate, useRevalidator } from 'react-router-dom'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Card from '../components/ui/Card.jsx'
 import Button from '../components/ui/Button.jsx'
 import Badge from '../components/ui/Badge.jsx'
 import Icon from '../components/ui/Icon.jsx'
+import ConfirmDialog from '../components/ui/ConfirmDialog.jsx'
 import ProjetMediasListe from '../components/projets/ProjetMediasListe.jsx'
-import { fetchProjet } from '../api/projets.js'
+import ProjetFormModal from '../components/projets/ProjetFormModal.jsx'
+import { deleteProjet, fetchProjet } from '../api/projets.js'
+import { fetchMissions } from '../api/missions.js'
 import { MISSION_STATUT, MISSION_TYPE, PROJET_TAG, enumMeta } from '../lib/enums.js'
 import { formatDate, formatDateLongue, formatPeriode } from '../lib/format.js'
 import { mediasProjet } from '../lib/medias.js'
 import { couleurType } from '../lib/viz.js'
 
-// Fiche inconnue -> fetchProjet jette une Response 404 (cf. api/client.js), que
-// le data router transforme en ecran d'erreur.
+// Fiche inconnue -> l'API repond 404 et le loader rejette : `RouteError` rend
+// l'ecran adequat (cf. router.jsx).
+//
+// Les missions ne servent qu'au selecteur « mission liee » de la modale
+// d'edition — chargees en parallele pour que l'ouverture soit immediate.
 export async function loader({ params }) {
-  return { projet: await fetchProjet(params.id) }
+  const [projet, missions] = await Promise.all([fetchProjet(params.id), fetchMissions()])
+  return { projet, missions }
 }
 
 function Ligne({ label, children }) {
@@ -29,7 +37,11 @@ function Ligne({ label, children }) {
 }
 
 function ProjetDetail() {
-  const { projet } = useLoaderData()
+  const { projet, missions } = useLoaderData()
+  const revalidator = useRevalidator()
+  const navigate = useNavigate()
+  const [edition, setEdition] = useState(false)
+  const [suppression, setSuppression] = useState(false)
 
   const tag = enumMeta(PROJET_TAG, projet.tag)
   const medias = mediasProjet(projet)
@@ -43,11 +55,39 @@ function ProjetDetail() {
           <Icon name="arrowLeft" className="size-4" />
           Projets
         </Button>
-        {/* PUT /api/projets/:id n'est ecrit ni ici ni cote serveur. */}
-        <Button disabled title="Edition a venir">
-          Modifier
+        <Button onClick={() => setEdition(true)}>Modifier</Button>
+        <Button variant="secondary" onClick={() => setSuppression(true)}>
+          <Icon name="corbeille" className="size-4" />
+          Supprimer
         </Button>
       </PageHeader>
+
+      {/* Meme modale qu'a la creation, preremplie : les regles de saisie ne
+          doivent pas diverger entre les deux. */}
+      <ProjetFormModal
+        ouvert={edition}
+        onClose={() => setEdition(false)}
+        missions={missions}
+        projet={projet}
+        onEnregistre={() => revalidator.revalidate()}
+      />
+
+      {/* La fiche disparait avec le projet : retour a la liste plutot que de
+          rester sur une route qui repondrait desormais 404. */}
+      <ConfirmDialog
+        ouvert={suppression}
+        onClose={() => setSuppression(false)}
+        onConfirmer={async () => {
+          await deleteProjet(projet.id)
+          navigate('/projets', { replace: true })
+        }}
+        titre="Supprimer cette fiche ?"
+        description={
+          portfolios.length > 0
+            ? `« ${projet.titre} » sera retiree de tes ${portfolios.length} page(s) publique(s), et son media supprime du stockage.`
+            : `« ${projet.titre} » sera retiree, et son media supprime du stockage.`
+        }
+      />
 
       <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3">
         <Badge tone={tag.tone}>{tag.label}</Badge>

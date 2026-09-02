@@ -33,6 +33,41 @@ function moisPrecedent(reference) {
 
 const estAcquise = (mission) => STATUTS_ACQUIS.includes(mission.statut)
 
+// Les deux graphes du dashboard partagent exactement les memes mois et les
+// memes couleurs. Les missions proposees ne sont pas comptabilisees : elles ne
+// representent ni des heures acquises ni du chiffre d'affaires realise.
+function donneesMensuelles(missions, heuresJourDefaut, fenetreMois, reference) {
+  const mois = []
+  const debut = new Date(reference.getFullYear(), reference.getMonth() - fenetreMois + 1, 1)
+
+  for (let index = 0; index < fenetreMois; index += 1) {
+    const date = new Date(debut.getFullYear(), debut.getMonth() + index, 1)
+    mois.push({
+      cle: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+      label: new Intl.DateTimeFormat('fr-FR', { month: 'short' }).format(date).replace('.', ''),
+      heuresIntermittence: 0,
+      heuresFreelance: 0,
+      caIntermittence: 0,
+      caFreelance: 0,
+    })
+  }
+
+  const parCle = new Map(mois.map((ligne) => [ligne.cle, ligne]))
+  for (const mission of missions) {
+    if (!estAcquise(mission)) continue
+    const date = new Date(mission.dateDebut)
+    const cle = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+    const ligne = parCle.get(cle)
+    if (!ligne) continue
+
+    const suffixe = mission.type === 'FREELANCE' ? 'Freelance' : 'Intermittence'
+    ligne[`heures${suffixe}`] += heuresMission(mission, heuresJourDefaut)
+    ligne[`ca${suffixe}`] += num(mission.montantHt)
+  }
+
+  return mois
+}
+
 export function computeDashboard({ configSeuil, missions = [], documents = [] }, reference = new Date()) {
   const { seuilHeuresAnnuel, heuresJourDefaut, fenetreMois } = configSeuil
   const debut = debutFenetre(reference, fenetreMois)
@@ -88,6 +123,7 @@ export function computeDashboard({ configSeuil, missions = [], documents = [] },
         .slice(0, 5),
     },
     repartition,
+    graphiques: donneesMensuelles(missions, heuresJourDefaut, fenetreMois, reference),
     documentsRecents: [...documents]
       .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))
       .slice(0, 4),

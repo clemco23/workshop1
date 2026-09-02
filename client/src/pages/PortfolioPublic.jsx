@@ -1,9 +1,34 @@
-import { useLoaderData } from 'react-router-dom'
+import { useLoaderData, useRouteError } from 'react-router-dom'
 import { fetchPortfolioPublic } from '../api/portfolios.js'
 import { formatDate } from '../lib/format.js'
+import { messageErreur } from '../lib/erreurs.js'
 
 export async function loader({ params }) {
   return fetchPortfolioPublic(params.slug)
+}
+
+// Seule page vue par quelqu'un qui n'a pas de compte : elle a son propre ecran
+// d'erreur, sans coquille d'application ni lien vers l'espace prive. Un slug
+// inconnu *ou* une page depubliee repondent tous deux 404 — c'est voulu, rien
+// ne doit reveler qu'une adresse existe mais est hors ligne.
+export function ErrorBoundary() {
+  const error = useRouteError()
+  const introuvable = error?.response?.status === 404
+
+  return (
+    <main className="grid min-h-screen place-items-center bg-slate-50 px-4">
+      <div className="max-w-md text-center">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-950">
+          {introuvable ? 'Page introuvable' : 'Page indisponible'}
+        </h1>
+        <p className="mt-2 text-slate-600">
+          {introuvable
+            ? "Cette adresse ne correspond a aucun portfolio en ligne. Verifie le lien qu'on t'a partage."
+            : messageErreur(error)}
+        </p>
+      </div>
+    </main>
+  )
 }
 
 function videoEmbedUrl(link) {

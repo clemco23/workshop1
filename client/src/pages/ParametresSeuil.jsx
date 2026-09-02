@@ -1,13 +1,20 @@
 import { useMemo, useState } from 'react'
-import { useLoaderData } from 'react-router-dom'
+import { useLoaderData, useRevalidator } from 'react-router-dom'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Card from '../components/ui/Card.jsx'
 import Button from '../components/ui/Button.jsx'
 import Badge from '../components/ui/Badge.jsx'
 import Input from '../components/ui/Input.jsx'
-import { fetchConfigSeuil } from '../api/compte.js'
-import { DEFAUTS, estModifie, validerParametres, versFormulaire } from '../lib/parametres.js'
+import { fetchConfigSeuil, updateConfigSeuil } from '../api/compte.js'
+import {
+  DEFAUTS,
+  estModifie,
+  validerParametres,
+  versFormulaire,
+  versPayload,
+} from '../lib/parametres.js'
 import { formatDate, formatHeures, num } from '../lib/format.js'
+import { messageErreur } from '../lib/erreurs.js'
 
 export async function loader() {
   return { configSeuil: await fetchConfigSeuil() }
@@ -15,13 +22,45 @@ export async function loader() {
 
 function ParametresSeuil() {
   const { configSeuil } = useLoaderData()
+  const revalidator = useRevalidator()
   const [formulaire, setFormulaire] = useState(() => versFormulaire(configSeuil))
+  const [envoi, setEnvoi] = useState(false)
+  const [erreurApi, setErreurApi] = useState(null)
+  const [enregistre, setEnregistre] = useState(false)
 
   const { erreurs, valide } = useMemo(() => validerParametres(formulaire), [formulaire])
   const modifie = estModifie(formulaire, configSeuil)
 
-  const setChamp = (cle) => (valeur) => setFormulaire((etat) => ({ ...etat, [cle]: valeur }))
-  const reinitialiser = () => setFormulaire(versFormulaire(configSeuil))
+  const setChamp = (cle) => (valeur) => {
+    setEnregistre(false)
+    setFormulaire((etat) => ({ ...etat, [cle]: valeur }))
+  }
+
+  const reinitialiser = () => {
+    setErreurApi(null)
+    setEnregistre(false)
+    setFormulaire(versFormulaire(configSeuil))
+  }
+
+  // Apres l'enregistrement, on revalide la route plutot que de recopier la
+  // reponse dans l'etat : `configSeuil` reste ce que le serveur dit, et la carte
+  // « configuration actuelle » (updatedAt compris) suit toute seule.
+  async function enregistrer() {
+    if (!valide || !modifie || envoi) return
+
+    setEnvoi(true)
+    setErreurApi(null)
+
+    try {
+      await updateConfigSeuil(versPayload(formulaire))
+      setEnregistre(true)
+      revalidator.revalidate()
+    } catch (error) {
+      setErreurApi(messageErreur(error))
+    } finally {
+      setEnvoi(false)
+    }
+  }
 
   // Lecture en clair de la regle, avec les valeurs saisies : c'est la phrase que
   // le formulaire configure, pas trois nombres isoles.
@@ -36,15 +75,26 @@ function ParametresSeuil() {
         title="Parametres"
         subtitle="Seuil d'heures, fenetre de calcul et heures par jour par defaut"
       >
-        <Button variant="secondary" onClick={reinitialiser} disabled={!modifie}>
+        <Button variant="secondary" onClick={reinitialiser} disabled={!modifie || envoi}>
           Annuler
         </Button>
-        {/* PUT /api/parametres n'est ecrit ni ici ni cote serveur : le formulaire
-            se remplit et se valide, mais rien n'est persiste. */}
-        <Button disabled title="Enregistrement a venir : l'endpoint serveur reste a ecrire">
-          Enregistrer
+        <Button
+          onClick={enregistrer}
+          disabled={!valide || !modifie || envoi}
+          title={!valide ? 'Corrige les champs en rouge' : undefined}
+        >
+          {envoi ? 'Enregistrement…' : 'Enregistrer'}
         </Button>
       </PageHeader>
+
+      {erreurApi && (
+        <p
+          role="alert"
+          className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
+          {erreurApi}
+        </p>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="grid min-w-0 content-start gap-4 lg:col-span-2">
@@ -140,9 +190,13 @@ function ParametresSeuil() {
               </p>
             )}
 
-            {modifie && (
+            {(modifie || enregistre) && (
               <div className="mt-3 border-t border-slate-100 pt-3">
-                <Badge tone="warning">Modifications non enregistrees</Badge>
+                {modifie ? (
+                  <Badge tone="warning">Modifications non enregistrees</Badge>
+                ) : (
+                  <Badge tone="success">Enregistre</Badge>
+                )}
               </div>
             )}
           </Card>
