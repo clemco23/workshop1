@@ -20,7 +20,7 @@ async function sendVerificationCode(email, code) {
   const transporter = getTransporter();
 
   return transporter.sendMail({
-    from: `"Workshop" <${process.env.GMAIL_USER}>`,
+    from: `"Editly" <${process.env.GMAIL_USER}>`,
     to: email,
     subject: 'Votre code de connexion',
     text: `Votre code de connexion est : ${code}. Il expire dans 10 minutes.`,

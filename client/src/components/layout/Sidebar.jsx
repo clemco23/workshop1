@@ -30,9 +30,9 @@ function Sidebar({ onNavigate }) {
     <div className="flex h-full flex-col gap-6 border-r border-slate-200 bg-white px-4 py-5">
       <div className="flex items-center gap-2.5 px-1">
         <span className="grid size-8 place-items-center rounded-lg bg-brand-600 text-sm font-bold text-white">
-          W
+          E
         </span>
-        <span className="text-sm font-semibold tracking-tight text-slate-900">wks1</span>
+        <span className="text-sm font-semibold tracking-tight text-slate-900">Editly</span>
       </div>
 
       <nav className="flex flex-1 flex-col gap-1">
