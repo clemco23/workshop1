@@ -21,12 +21,15 @@ Il n'y a pas de suite de tests dans ce dossier : après un changement, vérifier
 ## Stack
 
 - **React 19** avec `StrictMode` (`src/main.jsx` monte `<App />` sur `#root`).
-- **Vite 8**, config dans `vite.config.js` : plugins `@vitejs/plugin-react` (Oxc) et
-  `@tailwindcss/vite`.
+- **Vite 8**, config dans `vite.config.js` : plugins `@vitejs/plugin-react` et
+  `@tailwindcss/vite`. (Le `package.json` déclare encore `vite: ^5.4.10` alors que la
+  version installée est une 8 — la plage sera à corriger au prochain `npm install`
+  propre.)
 - **Tailwind CSS 4** — pas de `tailwind.config.js` : la config passe par le plugin Vite
   et les directives CSS dans `src/index.css`. Ne pas recréer un fichier de config v3.
-- **react-router-dom 7** en data router (voir la section Routing). **axios** et
-  **recharts** sont installés mais pas encore utilisés.
+- **react-router-dom 7** en data router (voir la section Routing).
+- **axios** pour les appels API (`src/api/client.js`) et **recharts** pour les graphes
+  (`MissionsTimeline`).
 - **oxlint** (`.oxlintrc.json`) comme linter — pas ESLint.
 
 Le React Compiler est volontairement désactivé (voir `README.md`).
@@ -43,14 +46,22 @@ client/
     router.jsx        # définition de toutes les routes (createBrowserRouter)
     index.css         # Tailwind + tokens du design system (@theme)
     api/              # instance axios + un module par ressource
-    lib/              # cn, format, enums, dérivations métier
+    lib/              # cn, format, enums, validation de formulaires, dérivations métier
     mocks/            # données simulées, à la forme du JSON de l'API
     components/
-      ui/             # primitives réutilisables (Card, Button, Badge, Icon, …)
+      ui/             # primitives réutilisables (Card, Button, Badge, Icon, Modal, …)
       layout/         # AppLayout, Sidebar, Topbar, navItems.js
-    pages/            # un composant par route (Dashboard et Missions sont remplis)
+      missions/       # agenda, timeline, table, résumé, légende, modale de formulaire
+      documents/      # table et bloc d'upload
+      projets/        # carte, médias, modale de formulaire
+      portfolios/     # sélection des projets, modale de formulaire
+    pages/            # un composant par route
     assets/           # images importées par le code (hero.png, logos)
 ```
+
+Les composants d'une page vivent dans `components/<domaine>/`, pas dans `pages/` : une
+page assemble et tient l'état, les composants de domaine affichent. Les primitives sans
+métier restent dans `ui/`.
 
 ## Design system
 
@@ -100,51 +111,55 @@ pas importés.
 
 ## Données & API
 
-La source de vérité du modèle est `../server/prisma/schema.prisma`. Le client s'y cale :
+La source de vérité du modèle est `../server/prisma/schema.prisma`, et les endroits
+réellement exposés sont listés dans `../server/CLAUDE.md`. Le client s'y cale :
 
 - **Formes** : l'API renvoie du camelCase (`client_production` → `clientProduction`),
   les enums en **chaînes** (`'CONFIRMED'`, `'INTERMITTENCE'`) et — piège — les
   `Decimal` Prisma en **chaînes** (`'40.00'`, pas `40`). D'où `num()` dans
   `src/lib/format.js`, à passer sur tout champ décimal avant calcul ou affichage.
-- **Enums** : `src/lib/enums.js` duplique les quatre enums du schéma
-  (`MissionType`, `MissionStatus`, `DocumentCategory`, `ProjectTag`) avec leur
-  libellé FR et leur `tone` de `Badge`. Modifier un enum côté serveur impose de
-  mettre ce fichier à jour ; `enumMeta()` évite le crash en affichant la valeur
+- **Enums** : `src/lib/enums.js` duplique les cinq enums du schéma
+  (`MissionType`, `MissionStatus`, `DocumentCategory`, `ProjectTag`, `ProjectType`)
+  avec leur libellé FR et leur `tone` de `Badge`. Modifier un enum côté serveur impose
+  de mettre ce fichier à jour ; `enumMeta()` évite le crash en affichant la valeur
   brute si le client est en retard.
-- **Appels** : `src/api/client.js` expose l'instance axios (`baseURL:
-  VITE_API_URL`), le drapeau `USE_MOCKS` et `notFound()`. Un module par ressource
-  dans `src/api/`, qui renvoie le mock ou tape l'API selon ce drapeau — les pages
-  ne connaissent ni axios ni les mocks. Chaque fonction porte en commentaire le
-  contrat de l'endpoint qu'elle attend côté serveur :
+- **Appels** : `src/api/client.js` expose l'instance axios (`baseURL: VITE_API_URL`,
+  défaut `http://localhost:4000`), le drapeau `USE_MOCKS` et `notFound()`. Un module par
+  ressource dans `src/api/`, qui renvoie le mock ou tape l'API selon ce drapeau — les
+  pages ne connaissent ni axios ni les mocks.
 
-  | Module            | Fonctions                                                  |
-  | ----------------- | ---------------------------------------------------------- |
-  | `dashboard.js`    | `fetchDashboard()`                                         |
-  | `missions.js`     | `fetchMissions(filtres)`, `fetchMission(id)`               |
-  | `documents.js`    | `fetchDocuments(filtres)`                                  |
-  | `projets.js`      | `fetchProjets(filtres)`, `fetchProjet(id)`                  |
-  |                   | filtres projets : `tag`, `missionId`                        |
+  | Module            | Fonctions                                                              |
+  | ----------------- | ---------------------------------------------------------------------- |
+  | `dashboard.js`    | `fetchDashboard()`                                                     |
+  | `missions.js`     | `fetchMissions(filtres)`, `fetchMission(id)`                           |
+  | `documents.js`    | `fetchDocuments(filtres)`                                              |
+  | `projets.js`      | `fetchProjets(filtres)`, `fetchProjet(id)` — filtres : `tag`, `missionId` |
   | `portfolios.js`   | `fetchPortfolios()`, `fetchPortfolio(id)`, `fetchPortfolioPublic(slug)` |
-  | `compte.js`       | `fetchProfil()`, `fetchConfigSeuil()`                      |
+  | `compte.js`       | `fetchProfil()`, `fetchConfigSeuil()`                                  |
 
   Les filtres (`type`, `statut`, `mois`, `client`, `categorie`, `tag`) sont
   réimplémentés dans les mocks, donc les UI de filtrage sont développables avant
-  le back. Les mutations (upload de document, réordonnancement d'un portfolio,
-  `PUT` du profil et des seuils) restent à écrire de part et d'autre.
+  le back.
 - **Mocks** : `src/mocks/db.js` est un **jeu de données unique** qui tient le rôle
   de la base pour un utilisateur (`user`, `configSeuil`, `missions`, `documents`,
   `projets`, `portfolios`, `portfolioProjets`). Chaque module d'`api/` en fait une
   *vue* — jamais une copie — pour qu'une même mission soit identique vue du
-  dashboard, de la liste ou d'un document lié. Ajouter des données se fait donc
-  dans `db.js`, pas dans un mock de page. Les dates y sont **relatives au mois
-  courant** pour que la démo ne se périme pas, et le jeu couvre volontairement
-  toutes les valeurs d'enum et tous les champs nullables (mission sans `heures`,
-  sans `date_fin`, sans `montant_ht`, document sans `mission_id`, projet perso sans
-  mission), ainsi qu'une mission hors fenêtre glissante. Basculer sur le vrai back
-  = `VITE_USE_MOCKS=false`, rien d'autre à toucher dans le client.
+  dashboard, de la liste ou d'un document lié ; `mocks/dashboard.js` n'est qu'une
+  projection de `db.js`. Ajouter des données se fait donc dans `db.js`, pas dans un
+  mock de page. Les dates y sont **relatives au mois courant** pour que la démo ne se
+  périme pas, et le jeu couvre volontairement toutes les valeurs d'enum et tous les
+  champs nullables (mission sans `heures`, sans `date_fin`, sans `montant_ht`, document
+  sans `mission_id`, projet perso sans mission), ainsi qu'une mission hors fenêtre
+  glissante.
 - **Dérivations** : les agrégats sont calculés côté client par des fonctions pures
-  (`src/lib/dashboard.js`), à partir des lignes brutes. L'endpoint n'a donc qu'à
-  renvoyer les lignes, pas des totaux — et la logique reste testable sans réseau.
+  (`src/lib/dashboard.js`, `src/lib/documents.js`, `src/lib/missions.js`), à partir des
+  lignes brutes. L'endpoint n'a donc qu'à renvoyer les lignes, pas des totaux — et la
+  logique reste testable sans réseau.
+- **Formulaires** : un fichier de validation par formulaire, en fonctions pures
+  (`src/lib/missionForm.js`, `projetForm.js`, `portfolioForm.js`, `parametres.js`) :
+  valeurs par défaut, contrôles alignés sur les bornes du schéma (`Decimal(6,2)`, etc.)
+  et mise en forme vers le contrat de l'API. Ce sont des garde-fous d'ergonomie, **pas**
+  une garantie : le serveur revalide tout de son côté.
 - **Chargement** : une page peut exporter un `loader` nommé à côté de son composant
   par défaut ; le helper `page()` de `router.jsx` le branche sur la route, donc les
   données sont prêtes avant le premier rendu (pas d'état de chargement dans la page).
@@ -188,9 +203,9 @@ un graphe lit un rôle (`couleurType(type)`), jamais un hex.
 - Les filtres sont sur **une seule rangée au-dessus** de ce qu'ils cadrent, jamais
   dans la carte d'un graphe : les deux vues rendent toujours la même sélection.
 
-`recharts` est la bibliothèque retenue (déjà dans les dépendances) ; chart.js a été
-écarté pour ne pas en avoir deux. Le chunk de la page Missions pèse ~365 kB à cause
-de recharts — acceptable parce que le lazy loading par route ne le charge que là.
+`recharts` est la bibliothèque retenue ; chart.js a été écarté pour ne pas en avoir
+deux. Le chunk de la page Missions pèse ~365 kB à cause de recharts — acceptable parce
+que le lazy loading par route ne le charge que là.
 
 ### Agenda mensuel
 
@@ -224,10 +239,14 @@ La logique est dans `src/lib/missions.js`, en fonctions pures :
 Tout est déclaré dans `src/router.jsx` avec `createBrowserRouter` (react-router 7,
 data router). Une page par fichier dans `src/pages/`, en `export default`.
 
-Chaque route est chargée en lazy via le helper local `page()` :
+Chaque route est chargée en lazy via le helper local `page()`, qui rebranche aussi les
+exports nommés du module de page :
 
 ```js
-const page = (loader) => async () => ({ Component: (await loader()).default })
+const page = (importer) => async () => {
+  const mod = await importer()
+  return { Component: mod.default, loader: mod.loader, ErrorBoundary: mod.ErrorBoundary }
+}
 // ...
 { path: 'documents', lazy: page(() => import('./pages/Documents.jsx')) }
 ```
@@ -238,9 +257,9 @@ Garder cette forme pour toute nouvelle route.
 
 | Chemin                  | Page                   | Contenu                                       |
 | ----------------------- | ---------------------- | --------------------------------------------- |
-| `/login`                | `Login`                | connexion (Supabase Auth)                     |
+| `/login`                | `Login`                | connexion (code envoyé par email)             |
 | `/signup`               | `Signup`               | inscription                                   |
-| `/verify-code`          | `VerifyCode`           | saisie du code reçu (`email_verifie` / 2FA)   |
+| `/verify-code`          | `VerifyCode`           | saisie du code à 6 chiffres reçu par email    |
 | `/`                     | `Dashboard`            | bloc B — jauge heures, CA/mois, répartition   |
 | `/missions`             | `Missions`             | bloc A — vue mois + liste, filtres            |
 | `/missions/:id`         | `MissionDetail`        | détail / édition d'une mission                |
@@ -256,41 +275,22 @@ Garder cette forme pour toute nouvelle route.
 Les routes à paramètre sont des enfants de leur liste (`missions` → `:id`) pour qu'un
 futur layout parent ne soit pas remonté à chaque navigation.
 
-### État actuel — pas encore fait
+## Authentification
 
-- **Aucune garde d'authentification** : toutes les routes sont accessibles. Quand
-  `ProtectedRoute` arrivera, `/portfolio/:slug` doit rester en dehors — c'est la seule
-  route publique, elle tape `/api/public/portfolio/:slug` et ne doit ni charger le client
-  Supabase ni attendre une session.
-- Le layout partagé existe (voir section Layout), mais seuls **`Dashboard`,
-  `Missions`, `MissionDetail`, `Documents`, `Projets`, `ProjetDetail`,
-  `ParametresSeuil`, `PortfoliosAdmin`, `PortfolioAdminDetail` et `PortfolioPublic`**
-  ont du contenu : les autres pages (`Login`, `Signup`, `VerifyCode`) renvoient encore `null` et
-  s'affichent donc comme une zone vide dans la coquille. `/login`, `/signup`, `/verify-code`, `/portfolio/:slug` et la 404
-  sont volontairement hors du layout.
-- Le Dashboard et Missions lisent encore les **mocks** (`VITE_USE_MOCKS`), voir *Données & API* :
-  le back n'expose que `/api/health`, l'endpoint `GET /api/dashboard`
-  (`{ user, configSeuil, missions, documents }`) reste à écrire.
-- **Médias d'une fiche projet** : le schéma stocke **un seul** média par fiche —
-  `projet.type` (enum `ProjectType` : `IMAGE` / `PDF` / `VIDEO` / `LINK`) et `projet.link`.
-  Une réalisation peut pourtant en montrer plusieurs (captation + photos + dossier de
-  presse), donc le client passe partout par `mediasProjet()` (`src/lib/medias.js`), qui
-  rend une *liste* : le tableau `medias` s'il existe, sinon le couple `type` + `link`.
-  Les libellés viennent de `PROJET_TYPE` dans `enums.js`, `medias.js` n'ajoute que l'icône.
-  Côté serveur, la suite est une table `projet_media` (`projet_id`, `type`, `url` |
-  `fichier_path`, `titre`, `ordre`) — **pas** un `projet_id` sur `document` : `document`
-  est le coffre privé des justificatifs et `/portfolio/:slug` est public. Quand l'API
-  renverra `medias`, seule cette fonction change.
-- **`errorElement` seulement sur `/portfolio/:slug`** : cette route publique exporte un
-  `ErrorBoundary` (le helper `page()` de `router.jsx` le branche comme `loader`), parce
-  qu'un visiteur sans compte ne doit pas tomber sur l'écran de dev de react-router quand
-  le slug est inconnu ou la page désactivée. Les routes authentifiées n'en ont pas encore :
-  à ajouter avec la garde d'auth, dès que le `loader` pourra échouer sur une erreur réseau.
-- La `Topbar` affiche un nom et un avatar **en dur** : à brancher sur
-  `users.first_name` / `last_name` quand la session existera.
-- **Supabase n'est pas installé** : les pages d'auth sont vides. `@supabase/supabase-js`
-  reste à ajouter, avec `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` dans
-  `.env.example` (la clé anon est publique par design, ce n'est pas un secret).
+Le back **n'utilise pas Supabase Auth** : la connexion est un code à usage unique envoyé
+par email et échangé contre un JWT (détail dans `../server/CLAUDE.md`). Rien n'est encore
+branché côté client — quand ça le sera :
+
+1. `POST /api/auth/request-code` avec `{ email }` depuis `/login` (le même appel sert
+   d'inscription : le compte est créé s'il n'existe pas).
+2. `POST /api/auth/verify-code` avec `{ email, code }` depuis `/verify-code`, qui renvoie
+   `{ token, user }`.
+3. Le jeton part ensuite en `Authorization: Bearer <token>` sur **toutes** les routes
+   sauf `/api/public/*` — à poser dans un intercepteur de requête sur l'instance axios de
+   `src/api/client.js`, jamais appel par appel.
+
+Il n'y a **pas** de `@supabase/supabase-js` à installer côté client : le client ne parle
+qu'à l'API Express.
 
 ## Variables d'environnement
 
@@ -298,8 +298,11 @@ Fichiers : `.env` (local, ignoré par git) et `.env.example` (versionné, à ten
 
 - Seules les variables préfixées `VITE_` sont exposées au code, via `import.meta.env.VITE_*`.
   Pas de `process.env` dans le code client.
-- **Aucun secret** dans ces fichiers : tout finit dans le bundle public.
+- **Aucun secret** dans ces fichiers : tout finit dans le bundle public. En particulier,
+  la clé Supabase du serveur (`SUPABASE_SECRET_KEY`) ne doit **jamais** être recopiée ici.
 - `VITE_API_URL` pointe vers l'API Express (par défaut `http://localhost:4000`).
+- `VITE_USE_MOCKS` — `'false'` pour taper la vraie API, toute autre valeur (ou absente)
+  laisse les mocks actifs.
 
 Ajouter une variable = l'ajouter aussi dans `.env.example` avec une valeur d'exemple.
 
@@ -310,4 +313,60 @@ Ajouter une variable = l'ajouter aussi dans `.env.example` avec une valeur d'exe
   (suivre le style existant de `src/router.jsx`).
 - Une page = un fichier dans `src/pages/`, nommé comme dans le tableau des routes,
   déclarée en lazy dans `src/router.jsx`.
-- Appels API : passer par `VITE_API_URL`, jamais d'URL absolue codée en dur.
+- Appels API : passer par l'instance de `src/api/client.js`, jamais d'URL absolue codée
+  en dur ni d'`axios` importé dans une page.
+
+## État actuel — pas encore fait
+
+Le back a pris de l'avance : il expose désormais l'auth, le dashboard, les missions, les
+projets (avec upload), les portfolios et la page publique. Le client, lui, est **encore
+en lecture seule sur les mocks**. Les écarts à résorber, par ordre de blocage :
+
+- **Aucun jeton n'est envoyé.** L'instance axios n'a pas d'intercepteur, et le jeton
+  n'est ni stocké ni lu nulle part. Basculer `VITE_USE_MOCKS=false` aujourd'hui fait
+  répondre **401 à toutes les routes** sauf `/api/public/portfolio/:slug`. C'est le
+  premier chantier — voir la section Authentification. (À noter : `.env.example` livre
+  déjà `VITE_USE_MOCKS=false`.)
+- **Chemins désalignés avec le serveur** — à corriger dans `src/api/` :
+
+  | Le client appelle              | Le serveur expose                     |
+  | ------------------------------ | ------------------------------------- |
+  | `/api/projets`, `/api/projets/:id` | `/api/projects`, `/api/projects/:id` |
+  | `PUT /api/portfolios/:id/projets`  | `PUT /api/portfolios/:id/projects`   |
+  | `GET /api/profil`              | rien — utiliser `GET /api/auth/me`     |
+  | `/api/documents*`              | rien pour l'instant                    |
+
+- **Aucune mutation n'est câblée.** Les modales (`MissionFormModal`, `ProjetFormModal`,
+  `PortfolioFormModal`) valident la saisie mais ne postent rien : `src/api/` n'a que des
+  `fetch*`. Le serveur accepte pourtant déjà `POST`/`PATCH`/`DELETE` sur les missions,
+  les projets et les portfolios, `PUT /api/portfolios/:id/projects` pour le
+  réordonnancement, et `PUT /api/parametres` pour les seuils. L'upload d'un média de
+  projet se fait en `multipart/form-data`, champ `file`, 50 Mo max.
+- **Aucune garde d'authentification** : toutes les routes sont accessibles. Quand
+  `ProtectedRoute` arrivera, `/portfolio/:slug` doit rester en dehors — c'est la seule
+  route publique, elle tape `/api/public/portfolio/:slug` et ne doit pas attendre de
+  session.
+- Les pages **`Login`, `Signup` et `VerifyCode` renvoient encore `null`** : elles
+  s'affichent comme une zone vide. Toutes les autres pages ont du contenu. `/login`,
+  `/signup`, `/verify-code`, `/portfolio/:slug` et la 404 sont volontairement hors du
+  layout.
+- **`errorElement` seulement sur `/portfolio/:slug`** : cette route publique exporte un
+  `ErrorBoundary` (branché par le helper `page()`), parce qu'un visiteur sans compte ne
+  doit pas tomber sur l'écran de dev de react-router quand le slug est inconnu ou la page
+  désactivée. Les routes authentifiées n'en ont pas encore : à ajouter avec la garde
+  d'auth, dès que le `loader` pourra échouer sur un 401 ou une erreur réseau.
+- La `Topbar` affiche un nom et un avatar **en dur** : à brancher sur
+  `user.firstName` / `lastName` quand la session existera.
+- **Médias d'une fiche projet** : le schéma stocke **un seul** média par fiche —
+  `projet.type` (enum `ProjectType` : `IMAGE` / `PDF` / `VIDEO` / `LINK`) et `projet.link`
+  (une URL publique de Supabase Storage quand c'est un fichier). Une réalisation peut
+  pourtant en montrer plusieurs (captation + photos + dossier de presse), donc le client
+  passe partout par `mediasProjet()` (`src/lib/medias.js`), qui rend une *liste* : le
+  tableau `medias` s'il existe, sinon le couple `type` + `link`. Les libellés viennent de
+  `PROJET_TYPE` dans `enums.js`, `medias.js` n'ajoute que l'icône. Côté serveur, la suite
+  est une table `projet_media` — **pas** un `projet_id` sur `document` : `document` est le
+  coffre privé des justificatifs et `/portfolio/:slug` est public. Quand l'API renverra
+  `medias`, seule cette fonction change.
+- Petit défaut connu : dans `fetchPortfolioPublic`, un slug introuvable **en mode mock**
+  ne s'arrête pas — l'exécution retombe sur l'appel réseau. À refermer par un
+  `notFound('Portfolio')` explicite.
