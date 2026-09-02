@@ -1,13 +1,16 @@
 import { api, USE_MOCKS, notFound } from './client.js'
 import { missions, portfolioProjets, portfolios, projets } from '../mocks/db.js'
 
-// Contrats attendus cote server :
-//   GET /api/projets?tag=&missionId=  -> Projet[]
-//   GET /api/projets/:id   -> Projet (+ mission liee, + portfolios ou il figure)
+// Contrats cote server (voir ../../server/CLAUDE.md) :
+//   GET /api/projects?tag=&type=&missionId=  -> Project[] (+ mission liee)
+//   GET /api/projects/:id                    -> Project  (+ mission liee)
+//
+// `missionId=aucune` liste les fiches sans mission. Le detail ne renvoie pas
+// encore les portfolios ou la fiche figure : le mock, lui, les ajoute.
 
 export async function fetchProjets(filtres = {}) {
   if (!USE_MOCKS) {
-    const { data } = await api.get('/api/projets', { params: filtres })
+    const { data } = await api.get('/api/projects', { params: filtres })
     return data
   }
 
@@ -27,7 +30,7 @@ export async function fetchProjets(filtres = {}) {
 
 export async function fetchProjet(id) {
   if (!USE_MOCKS) {
-    const { data } = await api.get(`/api/projets/${id}`)
+    const { data } = await api.get(`/api/projects/${id}`)
     return data
   }
 

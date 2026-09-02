@@ -355,18 +355,17 @@ Sont câblés de bout en bout : l'**authentification** (`/login`, `/signup`,
 `/documents`. Tout le reste de l'app est encore en **lecture seule**. Les écarts, par
 ordre de blocage :
 
-- **Chemins désalignés avec le serveur** — à corriger dans `src/api/` :
-
-  | Le client appelle                  | Le serveur expose                     |
-  | ---------------------------------- | ------------------------------------- |
-  | `/api/projets`, `/api/projets/:id` | `/api/projects`, `/api/projects/:id`  |
-  | `GET /api/profil` (`compte.js`)    | rien — utiliser `GET /api/auth/me`     |
-
-  Les commentaires de contrat de `portfolios.js` parlent encore de
-  `PUT /api/portfolios/:id/projets` : c'est `/projects` côté serveur. Tant que ces
-  chemins ne sont pas repris, basculer `VITE_USE_MOCKS=false` casse les projets et le
-  profil — le reste (auth, dashboard, missions, documents, portfolios) passe.
-
+- **Deux restes de désalignement**, sans conséquence aujourd'hui : `fetchProfil()`
+  (`compte.js`) vise `/api/profil`, qui n'existe pas — mais la fonction n'a **aucun
+  appelant**, c'est du code mort à supprimer ou à rebrancher sur `GET /api/auth/me`. Et
+  les commentaires de contrat de `portfolios.js` parlent encore de
+  `PUT /api/portfolios/:id/projets` : c'est `/projects` côté serveur.
+- **Aucun intercepteur de réponse** : un 401 (jeton expiré au bout de sept jours) remonte
+  en erreur axios depuis un `loader`, donc sur l'écran de dev de react-router, sans
+  redirection vers `/login`. À écrire avec `ProtectedRoute`.
+- **Pas de réhydratation de session** : `/api/auth/me` n'est jamais appelé et
+  `lireUtilisateur()` jamais utilisé, donc au rechargement le jeton repart bien mais rien
+  ne réaffiche l'utilisateur.
 - **Les mutations restent à brancher**, alors que le serveur les expose toutes. Les
   modales (`MissionFormModal`, `ProjetFormModal`, `PortfolioFormModal`) valident la
   saisie mais ne postent rien, et les boutons restent `disabled` avec une infobulle
@@ -386,8 +385,7 @@ ordre de blocage :
   rien n'oblige à passer par `/login`. Quand `ProtectedRoute` arrivera,
   `/portfolio/:slug` doit rester en dehors — c'est la seule route publique.
 - **Aucune déconnexion** : `effacerSession()` existe (`src/lib/session.js`) mais n'est
-  appelée nulle part, et la `Topbar` affiche toujours un nom et un avatar **en dur**. À
-  brancher sur `lireUtilisateur()`.
+  appelée nulle part, et la `Topbar` affiche toujours un nom et un avatar **en dur**.
 - **Plus aucun `errorElement`** : `PortfolioPublic` n'exporte plus d'`ErrorBoundary`
   depuis sa réécriture, donc un slug inconnu montre l'écran de dev de react-router à un
   visiteur sans compte. À remettre là, puis à généraliser aux routes authentifiées avec

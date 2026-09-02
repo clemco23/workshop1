@@ -19,7 +19,8 @@ export async function loader() {
   return { projets, missions }
 }
 
-// Le filtre par tag est le seul prevu cote API (GET /api/projets?tag=).
+// Cote API le filtre existe aussi (GET /api/projects?tag=), il n'est pas utilise
+// ici : la liste est chargee une fois puis filtree en memoire.
 const onglets = [
   { value: '', label: 'Tous' },
   ...Object.entries(PROJET_TAG).map(([value, meta]) => ({ value, label: meta.label })),

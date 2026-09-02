@@ -182,7 +182,7 @@ Toutes préfixées `/api` sauf `/`. « Auth » = protégée par `requireAuth`.
 | DELETE  | `/api/missions/:id`           |  •   | 204 sans corps ; 404                                          |
 | GET     | `/api/projects`               |  •   | 200 `Project[]`, triés par `date` desc                        |
 | POST    | `/api/projects`               |  •   | 201 `Project` — `multipart/form-data`, champ fichier `file`   |
-| GET     | `/api/projects/:id`           |  •   | 200 `Project` avec sa `mission` ; 404                         |
+| GET     | `/api/projects/:id`           |  •   | 200 `Project` avec sa `mission` et ses `portfolios` (voir plus bas) ; 404 |
 | PATCH   | `/api/projects/:id`           |  •   | 200 `Project` ; 404                                           |
 | DELETE  | `/api/projects/:id`           |  •   | 204 — supprime aussi le média dans Storage                    |
 | GET     | `/api/documents`              |  •   | 200 `Document[]` avec leur `mission`, triés par `uploadedAt` desc |
@@ -232,7 +232,17 @@ Supabase Storage via `projectMediaService`.
 - Un échec de suppression dans Storage est seulement journalisé, il ne fait pas échouer
   la requête (la ligne en base est la source de vérité).
 
-Filtres en query sur `GET /api/projects` : `tag`, `type`.
+`GET /api/projects/:id` renvoie aussi **`portfolios`** : les pages publiques où la fiche
+figure, chacune avec son `ordre`. C'est ce qui permet au client de dire si une
+réalisation est exposée, et où. La table de jonction est **aplatie** avant la réponse —
+le client lit un tableau de portfolios, pas des lignes de liaison — et la projection est
+explicite (`id`, `slug`, `titrePage`, `actif`) : `user_id` n'a rien à faire dans une
+réponse, même authentifiée.
+
+Filtres en query sur `GET /api/projects` : `tag`, `type`, et `missionId` — dont la
+valeur spéciale **`aucune`** liste les fiches non rattachées, même convention que les
+documents. La liste inclut la `mission` de chaque fiche : sans elle, un projet rattaché
+s'afficherait comme un projet perso dans les cartes du client.
 
 ### Documents
 
