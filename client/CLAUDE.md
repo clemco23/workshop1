@@ -46,13 +46,14 @@ client/
     router.jsx        # définition de toutes les routes (createBrowserRouter)
     index.css         # Tailwind + tokens du design system (@theme)
     api/              # instance axios + un module par ressource
-    lib/              # cn, format, enums, validation de formulaires, dérivations métier
+    lib/              # cn, format, enums, session, erreurs, validation, dérivations métier
     mocks/            # données simulées, à la forme du JSON de l'API
     components/
       ui/             # primitives réutilisables (Card, Button, Badge, Icon, Modal, …)
       layout/         # AppLayout, Sidebar, Topbar, navItems.js
+      auth/           # AuthShell : coquille deux volets de /login, /signup, /verify-code
       missions/       # agenda, timeline, table, résumé, légende, modale de formulaire
-      documents/      # table et bloc d'upload
+      documents/      # table et formulaire de dépôt
       projets/        # carte, médias, modale de formulaire
       portfolios/     # sélection des projets, modale de formulaire
     pages/            # un composant par route
@@ -130,9 +131,10 @@ réellement exposés sont listés dans `../server/CLAUDE.md`. Le client s'y cale
 
   | Module            | Fonctions                                                              |
   | ----------------- | ---------------------------------------------------------------------- |
+  | `auth.js`         | `requestCode(email)`, `verifyCode(email, code)`                        |
   | `dashboard.js`    | `fetchDashboard()`                                                     |
   | `missions.js`     | `fetchMissions(filtres)`, `fetchMission(id)`                           |
-  | `documents.js`    | `fetchDocuments(filtres)`                                              |
+  | `documents.js`    | `fetchDocuments(filtres)`, `createDocument({ fichier, categorie, missionId })` |
   | `projets.js`      | `fetchProjets(filtres)`, `fetchProjet(id)` — filtres : `tag`, `missionId` |
   | `portfolios.js`   | `fetchPortfolios()`, `fetchPortfolio(id)`, `fetchPortfolioPublic(slug)` |
   | `compte.js`       | `fetchProfil()`, `fetchConfigSeuil()`                                  |
@@ -151,6 +153,11 @@ réellement exposés sont listés dans `../server/CLAUDE.md`. Le client s'y cale
   champs nullables (mission sans `heures`, sans `date_fin`, sans `montant_ht`, document
   sans `mission_id`, projet perso sans mission), ainsi qu'une mission hors fenêtre
   glissante.
+
+  Les mocks acceptent aussi une **écriture** : `ajouterDocument()` pousse dans le tableau
+  lu par `api/documents.js` — pas dans une copie — pour qu'un dépôt apparaisse vraiment
+  dans la liste après revalidation de la route. Rien n'est persisté : un rechargement
+  remet le jeu d'origine. Toute nouvelle mutation simulée suit cette forme.
 - **Dérivations** : les agrégats sont calculés côté client par des fonctions pures
   (`src/lib/dashboard.js`, `src/lib/documents.js`, `src/lib/missions.js`), à partir des
   lignes brutes. L'endpoint n'a donc qu'à renvoyer les lignes, pas des totaux — et la
@@ -160,6 +167,10 @@ réellement exposés sont listés dans `../server/CLAUDE.md`. Le client s'y cale
   valeurs par défaut, contrôles alignés sur les bornes du schéma (`Decimal(6,2)`, etc.)
   et mise en forme vers le contrat de l'API. Ce sont des garde-fous d'ergonomie, **pas**
   une garantie : le serveur revalide tout de son côté.
+- **Erreurs d'API** : `messageErreur(error, cas)` (`src/lib/erreurs.js`) traduit une
+  erreur axios en phrase affichable — un cas formulé par l'appelant, sinon le `message`
+  renvoyé par l'API, sinon un repli générique. Le statut brut n'est jamais montré.
+  `authForm.js` s'en sert en n'ajoutant que ses propres statuts (404/502/503).
 - **Chargement** : une page peut exporter un `loader` nommé à côté de son composant
   par défaut ; le helper `page()` de `router.jsx` le branche sur la route, donc les
   données sont prêtes avant le premier rendu (pas d'état de chargement dans la page).
@@ -278,16 +289,37 @@ futur layout parent ne soit pas remonté à chaque navigation.
 ## Authentification
 
 Le back **n'utilise pas Supabase Auth** : la connexion est un code à usage unique envoyé
-par email et échangé contre un JWT (détail dans `../server/CLAUDE.md`). Rien n'est encore
-branché côté client — quand ça le sera :
+par email et échangé contre un JWT (détail dans `../server/CLAUDE.md`). Le parcours est
+câblé de bout en bout.
 
-1. `POST /api/auth/request-code` avec `{ email }` depuis `/login` (le même appel sert
-   d'inscription : le compte est créé s'il n'existe pas).
-2. `POST /api/auth/verify-code` avec `{ email, code }` depuis `/verify-code`, qui renvoie
-   `{ token, user }`.
-3. Le jeton part ensuite en `Authorization: Bearer <token>` sur **toutes** les routes
-   sauf `/api/public/*` — à poser dans un intercepteur de requête sur l'instance axios de
-   `src/api/client.js`, jamais appel par appel.
+1. `/login` (ou `/signup`) appelle `requestCode(email)` → `POST /api/auth/request-code`.
+   Le même appel vaut inscription : le serveur crée le compte si l'email est inconnu, il
+   n'y a donc pas de second endpoint pour s'inscrire.
+2. `/verify-code` appelle `verifyCode(email, code)` → `POST /api/auth/verify-code`, qui
+   renvoie `{ token, user }`.
+3. `enregistrerSession()` (`src/lib/session.js`) range les deux dans `localStorage`, et
+   l'**intercepteur de requête** de `src/api/client.js` pose
+   `Authorization: Bearer <token>` sur chaque appel — jamais appel par appel dans un
+   module ou une page.
+
+Points de conception à ne pas défaire :
+
+- **L'email voyage par le state de navigation**, pas par l'URL : `/verify-code` en a
+  besoin pour le second appel, et une adresse n'a rien à faire dans un historique. Une
+  arrivée directe sur `/verify-code` sans state redirige vers `/login`.
+- **`localStorage`, pas `sessionStorage`** : le jeton vaut sept jours côté serveur,
+  fermer l'onglet ne doit pas déconnecter. Un JWT lisible par les scripts de la page est
+  le compromis assumé — pas de cookie `httpOnly` possible tant que l'API et le client ne
+  partagent pas de domaine. Tous les accès au stockage sont dans un `try/catch` (il lève
+  en navigation privée).
+- **L'intercepteur relit le jeton à chaque requête** plutôt que de le capturer au
+  démarrage, pour qu'une connexion ou une déconnexion prenne effet immédiatement.
+- Les trois écrans partagent `components/auth/AuthShell.jsx` : volet de présentation à
+  gauche (masqué sous `lg`), formulaire à droite. Le lockup de marque y est le même que
+  dans la `Sidebar` — un seul repère visuel pour toute l'app.
+- **En mode mock**, `api/auth.js` ne touche pas le réseau : n'importe quelle adresse est
+  acceptée et le code à saisir est `CODE_MOCK` (`src/mocks/db.js`, `'000000'`), annoncé
+  dans le bandeau de `/verify-code`. Le faux jeton est stocké comme un vrai.
 
 Il n'y a **pas** de `@supabase/supabase-js` à installer côté client : le client ne parle
 qu'à l'API Express.
@@ -318,45 +350,51 @@ Ajouter une variable = l'ajouter aussi dans `.env.example` avec une valeur d'exe
 
 ## État actuel — pas encore fait
 
-Le back a pris de l'avance : il expose désormais l'auth, le dashboard, les missions, les
-projets (avec upload), les portfolios et la page publique. Le client, lui, est **encore
-en lecture seule sur les mocks**. Les écarts à résorber, par ordre de blocage :
+Sont câblés de bout en bout : l'**authentification** (`/login`, `/signup`,
+`/verify-code`, jeton posé par l'intercepteur) et le **dépôt d'un justificatif** sur
+`/documents`. Tout le reste de l'app est encore en **lecture seule**. Les écarts, par
+ordre de blocage :
 
-- **Aucun jeton n'est envoyé.** L'instance axios n'a pas d'intercepteur, et le jeton
-  n'est ni stocké ni lu nulle part. Basculer `VITE_USE_MOCKS=false` aujourd'hui fait
-  répondre **401 à toutes les routes** sauf `/api/public/portfolio/:slug`. C'est le
-  premier chantier — voir la section Authentification. (À noter : `.env.example` livre
-  déjà `VITE_USE_MOCKS=false`.)
 - **Chemins désalignés avec le serveur** — à corriger dans `src/api/` :
 
-  | Le client appelle              | Le serveur expose                     |
-  | ------------------------------ | ------------------------------------- |
-  | `/api/projets`, `/api/projets/:id` | `/api/projects`, `/api/projects/:id` |
-  | `PUT /api/portfolios/:id/projets`  | `PUT /api/portfolios/:id/projects`   |
-  | `GET /api/profil`              | rien — utiliser `GET /api/auth/me`     |
-  | `/api/documents*`              | rien pour l'instant                    |
+  | Le client appelle                  | Le serveur expose                     |
+  | ---------------------------------- | ------------------------------------- |
+  | `/api/projets`, `/api/projets/:id` | `/api/projects`, `/api/projects/:id`  |
+  | `GET /api/profil` (`compte.js`)    | rien — utiliser `GET /api/auth/me`     |
 
-- **Aucune mutation n'est câblée.** Les modales (`MissionFormModal`, `ProjetFormModal`,
-  `PortfolioFormModal`) valident la saisie mais ne postent rien : `src/api/` n'a que des
-  `fetch*`. Le serveur accepte pourtant déjà `POST`/`PATCH`/`DELETE` sur les missions,
-  les projets et les portfolios, `PUT /api/portfolios/:id/projects` pour le
-  réordonnancement, et `PUT /api/parametres` pour les seuils. L'upload d'un média de
-  projet se fait en `multipart/form-data`, champ `file`, 50 Mo max.
-- **Aucune garde d'authentification** : toutes les routes sont accessibles. Quand
-  `ProtectedRoute` arrivera, `/portfolio/:slug` doit rester en dehors — c'est la seule
-  route publique, elle tape `/api/public/portfolio/:slug` et ne doit pas attendre de
-  session.
-- Les pages **`Login`, `Signup` et `VerifyCode` renvoient encore `null`** : elles
-  s'affichent comme une zone vide. Toutes les autres pages ont du contenu. `/login`,
-  `/signup`, `/verify-code`, `/portfolio/:slug` et la 404 sont volontairement hors du
-  layout.
-- **`errorElement` seulement sur `/portfolio/:slug`** : cette route publique exporte un
-  `ErrorBoundary` (branché par le helper `page()`), parce qu'un visiteur sans compte ne
-  doit pas tomber sur l'écran de dev de react-router quand le slug est inconnu ou la page
-  désactivée. Les routes authentifiées n'en ont pas encore : à ajouter avec la garde
-  d'auth, dès que le `loader` pourra échouer sur un 401 ou une erreur réseau.
-- La `Topbar` affiche un nom et un avatar **en dur** : à brancher sur
-  `user.firstName` / `lastName` quand la session existera.
+  Les commentaires de contrat de `portfolios.js` parlent encore de
+  `PUT /api/portfolios/:id/projets` : c'est `/projects` côté serveur. Tant que ces
+  chemins ne sont pas repris, basculer `VITE_USE_MOCKS=false` casse les projets et le
+  profil — le reste (auth, dashboard, missions, documents, portfolios) passe.
+
+- **Les mutations restent à brancher**, alors que le serveur les expose toutes. Les
+  modales (`MissionFormModal`, `ProjetFormModal`, `PortfolioFormModal`) valident la
+  saisie mais ne postent rien, et les boutons restent `disabled` avec une infobulle
+  « à venir » qui **n'est plus vraie** :
+
+  | Interface                                   | Endpoint disponible                     |
+  | ------------------------------------------- | --------------------------------------- |
+  | créer / éditer une mission                  | `POST`, `PATCH /api/missions/:id`        |
+  | créer un projet, éditer depuis `ProjetDetail` | `POST`, `PATCH /api/projects/:id`      |
+  | créer un portfolio, activer/désactiver      | `POST`, `PATCH /api/portfolios/:id`      |
+  | ajouter/retirer/réordonner ses projets      | `PUT /api/portfolios/:id/projects`       |
+  | enregistrer les seuils                      | `PUT /api/parametres`                    |
+  | télécharger un document (`DocumentsTable`)  | `GET /api/documents/:id/url` (lien signé) |
+  | supprimer quoi que ce soit                  | `DELETE` sur missions, projets, portfolios, documents — **aucune UI n'existe encore** |
+
+- **Aucune garde d'authentification** : toutes les routes sont accessibles sans session,
+  rien n'oblige à passer par `/login`. Quand `ProtectedRoute` arrivera,
+  `/portfolio/:slug` doit rester en dehors — c'est la seule route publique.
+- **Aucune déconnexion** : `effacerSession()` existe (`src/lib/session.js`) mais n'est
+  appelée nulle part, et la `Topbar` affiche toujours un nom et un avatar **en dur**. À
+  brancher sur `lireUtilisateur()`.
+- **Plus aucun `errorElement`** : `PortfolioPublic` n'exporte plus d'`ErrorBoundary`
+  depuis sa réécriture, donc un slug inconnu montre l'écran de dev de react-router à un
+  visiteur sans compte. À remettre là, puis à généraliser aux routes authentifiées avec
+  la garde d'auth (le `loader` pourra échouer sur un 401).
+- Pas de page **compte / profil**, pas d'entrée de nav : `fetchProfil()` (`api/compte.js`)
+  n'est appelée nulle part. `users.first_name` / `last_name` restent à `null` — aucun
+  écran ne permet de les saisir, et aucune route serveur de les écrire.
 - **Médias d'une fiche projet** : le schéma stocke **un seul** média par fiche —
   `projet.type` (enum `ProjectType` : `IMAGE` / `PDF` / `VIDEO` / `LINK`) et `projet.link`
   (une URL publique de Supabase Storage quand c'est un fichier). Une réalisation peut
@@ -367,6 +405,9 @@ en lecture seule sur les mocks**. Les écarts à résorber, par ordre de blocage
   est une table `projet_media` — **pas** un `projet_id` sur `document` : `document` est le
   coffre privé des justificatifs et `/portfolio/:slug` est public. Quand l'API renverra
   `medias`, seule cette fonction change.
+- Le formulaire de dépôt n'accepte **qu'un fichier à la fois** : la catégorie et la
+  mission valent pour lui. Un dépôt multiple demanderait une ligne de réglages par
+  fichier, pas une boucle sur le même formulaire.
 - Petit défaut connu : dans `fetchPortfolioPublic`, un slug introuvable **en mode mock**
   ne s'arrête pas — l'exécution retombe sur l'appel réseau. À refermer par un
   `notFound('Portfolio')` explicite.

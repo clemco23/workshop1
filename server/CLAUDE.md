@@ -68,15 +68,18 @@ server/
     config/
       prisma.js              # singleton PrismaClient — le seul endroit qui l'instancie
     routes/                  # un fichier par préfixe : déclare les verbes, branche requireAuth
-      authRoutes.js       healthRoutes.js     missionRoutes.js   settingsRoutes.js
-      dashboardRoutes.js  projectRoutes.js    portfolioRoutes.js publicPortfolioRoutes.js
+      authRoutes.js       healthRoutes.js     missionRoutes.js    settingsRoutes.js
+      dashboardRoutes.js  projectRoutes.js    documentRoutes.js   portfolioRoutes.js
+      publicPortfolioRoutes.js
     controllers/             # validation du body/query + accès Prisma + réponse HTTP
       authController.js      missionController.js   settingsController.js
-      dashboardController.js projectController.js   portfolioController.js
+      dashboardController.js projectController.js   documentController.js
+      portfolioController.js
     services/
-      authService.js         # codes à usage unique, JWT, résolution du user depuis le header
-      emailService.js        # envoi du code par Gmail (nodemailer)
-      projectMediaService.js # upload/suppression des médias dans Supabase Storage
+      authService.js            # codes à usage unique, JWT, résolution du user depuis le header
+      emailService.js           # envoi du code par Gmail (nodemailer)
+      projectMediaService.js    # médias de projet — bucket public, URL publique
+      documentStorageService.js # justificatifs — URL signée, jamais d'URL publique
     middlewares/
       authMiddleware.js      # requireAuth : pose req.user ou répond 401
   prisma/
@@ -182,6 +185,12 @@ Toutes préfixées `/api` sauf `/`. « Auth » = protégée par `requireAuth`.
 | GET     | `/api/projects/:id`           |  •   | 200 `Project` avec sa `mission` ; 404                         |
 | PATCH   | `/api/projects/:id`           |  •   | 200 `Project` ; 404                                           |
 | DELETE  | `/api/projects/:id`           |  •   | 204 — supprime aussi le média dans Storage                    |
+| GET     | `/api/documents`              |  •   | 200 `Document[]` avec leur `mission`, triés par `uploadedAt` desc |
+| POST    | `/api/documents`              |  •   | 201 `Document` — `multipart/form-data`, champ fichier `file`  |
+| GET     | `/api/documents/:id`          |  •   | 200 `Document` avec sa `mission` ; 404                        |
+| GET     | `/api/documents/:id/url`      |  •   | 200 `{ url }` — lien signé valable **1 h** ; 404              |
+| PATCH   | `/api/documents/:id`          |  •   | 200 `Document` — remplace le fichier si `file` est fourni ; 404 |
+| DELETE  | `/api/documents/:id`          |  •   | 204 — supprime aussi le fichier dans Storage                  |
 | GET     | `/api/portfolios`             |  •   | 200 `PortfolioPublic[]` + `nbProjets` et `publicUrl`          |
 | POST    | `/api/portfolios`             |  •   | 201 portfolio avec ses projets ; slug généré                  |
 | GET     | `/api/portfolios/:id`         |  •   | 200 portfolio + `projets` (ordonnés) + `projetsDisponibles` ; 404 |
@@ -224,6 +233,29 @@ Supabase Storage via `projectMediaService`.
   la requête (la ligne en base est la source de vérité).
 
 Filtres en query sur `GET /api/projects` : `tag`, `type`.
+
+### Documents
+
+Le coffre des justificatifs. Même mécanique que les médias de projet — multer en
+`memoryStorage` (champ `file`, 50 Mo), chemin `{userId}/documents/{uuid}{extension}`,
+nettoyage symétrique en cas d'échec ou de remplacement — avec **une différence qui
+gouverne tout le reste** : un justificatif n'a jamais d'URL publique.
+
+- La lecture passe donc par `GET /api/documents/:id/url`, qui rend une **URL signée
+  valable une heure** (`createSignedUrl`). Le client ne fabrique jamais l'URL depuis
+  `fichier_path` : ce champ est un chemin de stockage, pas une adresse.
+- Formats acceptés : PDF et images (mimetype **ou** extension, comme pour les projets).
+- Filtres en query sur `GET /api/documents` : `categorie`, et `missionId` — dont la
+  valeur spéciale **`aucune`** liste les documents non rattachés (`mission_id IS NULL`).
+- `PATCH` accepte un nouveau `file` : l'ancien objet n'est supprimé qu'une fois la ligne
+  mise à jour.
+
+⚠️ **Le bucket a un repli qui n'en est pas un.** `documentStorageService` lit
+`SUPABASE_DOCUMENT_BUCKET` et, à défaut, retombe sur `SUPABASE_PROJECT_MEDIA_BUCKET` —
+c'est-à-dire le bucket **public** des médias de projet. Les justificatifs y sont alors
+lisibles par quiconque connaît l'URL, la signature ne protégeant plus rien. Le repli
+dépanne en développement ; en production, `SUPABASE_DOCUMENT_BUCKET` doit pointer un
+bucket privé dédié, et cette variable devrait devenir obligatoire.
 
 ### Portfolios
 
@@ -289,9 +321,13 @@ service indisponible lève de même `status: 503` (Storage non configuré) ou `5
   Google pour l'envoi des codes. Absents, `emailService` lève
   `CONFIGURATION_GMAIL_MANQUANTE` et aucune connexion n'est possible.
 - `SUPABASE_URL` / `SUPABASE_SECRET_KEY` / `SUPABASE_PROJECT_MEDIA_BUCKET` — Storage des
-  médias de projet. `SUPABASE_SECRET_KEY` est une **clé de service** : elle ne doit
-  jamais être exposée au client ni préfixée `VITE_`. Absentes, les routes projets qui
-  touchent un fichier répondent 503.
+  médias de projet, servis par URL publique. `SUPABASE_SECRET_KEY` est une **clé de
+  service** : elle ne doit jamais être exposée au client ni préfixée `VITE_`. Absentes,
+  les routes projets qui touchent un fichier répondent 503.
+- `SUPABASE_DOCUMENT_BUCKET` — bucket **privé** des justificatifs. Techniquement
+  facultative (repli sur `SUPABASE_PROJECT_MEDIA_BUCKET`), mais ce repli range des
+  documents privés dans un bucket public : à considérer comme obligatoire hors
+  développement, voir la section Documents.
 - `PUBLIC_APP_URL` — URL publique du front, défaut `http://localhost:5173`, utilisée pour
   composer le `publicUrl` des portfolios.
 - `NODE_ENV`.
@@ -310,19 +346,14 @@ explicite quand c'est possible, documentée ici **et** ajoutée à `.env.example
 
 ## État actuel — à faire
 
-- **Endpoints `documents` absents** : le client attend `fetchDocuments(filtres)` et un
-  upload de justificatif (voir le tableau des modules dans `../client/CLAUDE.md`). C'est
-  le dernier bloc non couvert ; il peut réutiliser multer + `projectMediaService` — mais
-  vers un **bucket privé**, avec des URL signées : `document` est le coffre privé, à la
-  différence des médias de projet qui sont publics par construction.
-- **Code d'erreur email désynchronisé** : `authController` teste
-  `error.code === 'CONFIGURATION_BREVO_MANQUANTE'` alors que `emailService` lève
-  `CONFIGURATION_GMAIL_MANQUANTE` (reste de la bascule Brevo → Gmail). Le 503 prévu n'est
-  donc jamais renvoyé : un Gmail non configuré ressort en 500 « Erreur serveur ». Idem
-  `ENVOI_EMAIL_ECHOUE`, qu'aucun service ne lève.
-- **`console.log` de debug** dans `index.js` (chaque requête) et `authController` (dont
-  le body de `request-code`, qui contient l'email) : à retirer ou à passer derrière
-  `NODE_ENV !== 'production'`.
+- **Bucket des documents à isoler** : tant que `SUPABASE_DOCUMENT_BUCKET` n'est pas
+  définie, les justificatifs partent dans le bucket public des médias de projet (voir la
+  section Documents). C'est le point le plus urgent : les URL signées n'apportent aucune
+  confidentialité sur un bucket public.
+- **`console.log` de debug** dans `index.js` : chaque requête est journalisée (méthode et
+  chemin). À retirer ou à passer derrière `NODE_ENV !== 'production'`.
+- `ENVOI_EMAIL_ECHOUE` est intercepté dans `authController` mais **aucun service ne le
+  lève** : un envoi Gmail qui échoue ressort en 500 au lieu du 502 prévu.
 - Le middleware d'erreur est déclaré **après `app.listen()`** dans `index.js`. Ça
   fonctionne (la pile est consultée à chaque requête), mais le remonter juste avant le
   `listen` évite la surprise à la lecture.
