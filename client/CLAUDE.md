@@ -63,7 +63,11 @@ Tout l'habillage passe par trois choses, à réutiliser au lieu de recréer du s
   palette est `slate-*` (fond `slate-50`, surfaces blanches, bordures `slate-200`,
   texte `slate-900` / `slate-500`).
 - **Primitives** dans `src/components/ui/` : `Card`, `StatCard`, `Button`, `Badge`,
-  `ProgressBar`, `PageHeader`, `EmptyState`, `Icon`, `Tabs`, `Select`. Un fichier par composant,
+  `ProgressBar`, `PageHeader`, `EmptyState`, `Icon`, `Tabs`, `Select`, `Input`, `Modal`.
+  `Modal` s'appuie sur le `<dialog>` natif (`showModal()`) : le piège de focus, la touche
+  Échap, le fond inerte et le retour du focus au déclencheur viennent du navigateur — ne
+  pas le réécrire à la main. L'état ouvert/fermé reste au parent, et le champ à focaliser
+  à l'ouverture porte `data-autofocus`. Un fichier par composant,
   `export default`, `className` accepté en dernier pour surcharger, fusion via
   `cn()` (`src/lib/cn.js`). `Button` prend `as` (`<Button as={Link} to="…">`).
   `Icon` porte un dictionnaire de tracés SVG 24×24 en `currentColor` : ajouter une
@@ -71,6 +75,14 @@ Tout l'habillage passe par trois choses, à réutiliser au lieu de recréer du s
   celles du template Vite et ne servent pas à l'UI.
 - **Rythme** : chaque page commence par `<PageHeader>`, les grilles utilisent
   `gap-4`, les cartes `rounded-xl border border-slate-200 bg-white`.
+- **Débordement horizontal** : un enfant de `grid`/`flex` a `min-width: auto`, donc un
+  contenu large (URL insécable, table en `min-w-[…]` dans un `overflow-x-auto`) élargit
+  la colonne et fait scroller la page entière au lieu d'être coupé. Toute colonne de
+  grille qui contient du texte libre ou une table porte donc `min-w-0`, le texte long
+  `truncate` (sur un élément `block`, jamais un `<a>` inline) ou `break-words`, et les
+  éléments qui ne doivent pas se comprimer (icône, badge) `shrink-0`. `Card` et `Select`
+  portent déjà `min-w-0` (et le `<select>` `w-full`, sinon il se dimensionne sur son
+  option la plus longue) : c'est ce qui manquait et faisait scroller la fiche projet.
 
 ## Layout
 
@@ -111,6 +123,7 @@ La source de vérité du modèle est `../server/prisma/schema.prisma`. Le client
   | `missions.js`     | `fetchMissions(filtres)`, `fetchMission(id)`               |
   | `documents.js`    | `fetchDocuments(filtres)`                                  |
   | `projets.js`      | `fetchProjets(filtres)`, `fetchProjet(id)`                  |
+  |                   | filtres projets : `tag`, `missionId`                        |
   | `portfolios.js`   | `fetchPortfolios()`, `fetchPortfolio(id)`, `fetchPortfolioPublic(slug)` |
   | `compte.js`       | `fetchProfil()`, `fetchConfigSeuil()`                      |
 
@@ -236,7 +249,6 @@ Garder cette forme pour toute nouvelle route.
 | `/projets/:id`          | `ProjetDetail`         | détail / édition d'une fiche projet           |
 | `/portfolios`           | `PortfoliosAdmin`      | liste des pages publiques créées              |
 | `/portfolios/:id`       | `PortfolioAdminDetail` | sélection et réordonnancement des projets     |
-| `/profil`               | `Profil`               | `first_name`, `last_name`, `email`            |
 | `/parametres`           | `ParametresSeuil`      | seuils et fenêtre de mois                     |
 | `/portfolio/:slug`      | `PortfolioPublic`      | **seule route publique**                      |
 | `*`                     | `NotFound`             | 404                                           |
@@ -250,16 +262,30 @@ futur layout parent ne soit pas remonté à chaque navigation.
   `ProtectedRoute` arrivera, `/portfolio/:slug` doit rester en dehors — c'est la seule
   route publique, elle tape `/api/public/portfolio/:slug` et ne doit ni charger le client
   Supabase ni attendre une session.
-- Le layout partagé existe (voir section Layout), mais seuls **`Dashboard` et
-  `Missions`** ont du contenu : les autres pages renvoient encore `null` et
+- Le layout partagé existe (voir section Layout), mais seuls **`Dashboard`,
+  `Missions`, `MissionDetail`, `Documents`, `Projets`, `ProjetDetail`,
+  `ParametresSeuil`, `PortfoliosAdmin`, `PortfolioAdminDetail` et `PortfolioPublic`**
+  ont du contenu : les autres pages (`Login`, `Signup`, `VerifyCode`) renvoient encore `null` et
   s'affichent donc comme une zone vide dans la coquille. `/login`, `/signup`, `/verify-code`, `/portfolio/:slug` et la 404
   sont volontairement hors du layout.
 - Le Dashboard et Missions lisent encore les **mocks** (`VITE_USE_MOCKS`), voir *Données & API* :
   le back n'expose que `/api/health`, l'endpoint `GET /api/dashboard`
   (`{ user, configSeuil, missions, documents }`) reste à écrire.
-- **Aucun `errorElement`** sur les routes : tant que les mocks servent les données le
-  `loader` ne peut pas échouer, mais dès le branchement sur l'API une erreur réseau
-  affichera l'écran d'erreur par défaut de react-router. À ajouter avec la garde d'auth.
+- **Médias d'une fiche projet** : le schéma stocke **un seul** média par fiche —
+  `projet.type` (enum `ProjectType` : `IMAGE` / `PDF` / `VIDEO` / `LINK`) et `projet.link`.
+  Une réalisation peut pourtant en montrer plusieurs (captation + photos + dossier de
+  presse), donc le client passe partout par `mediasProjet()` (`src/lib/medias.js`), qui
+  rend une *liste* : le tableau `medias` s'il existe, sinon le couple `type` + `link`.
+  Les libellés viennent de `PROJET_TYPE` dans `enums.js`, `medias.js` n'ajoute que l'icône.
+  Côté serveur, la suite est une table `projet_media` (`projet_id`, `type`, `url` |
+  `fichier_path`, `titre`, `ordre`) — **pas** un `projet_id` sur `document` : `document`
+  est le coffre privé des justificatifs et `/portfolio/:slug` est public. Quand l'API
+  renverra `medias`, seule cette fonction change.
+- **`errorElement` seulement sur `/portfolio/:slug`** : cette route publique exporte un
+  `ErrorBoundary` (le helper `page()` de `router.jsx` le branche comme `loader`), parce
+  qu'un visiteur sans compte ne doit pas tomber sur l'écran de dev de react-router quand
+  le slug est inconnu ou la page désactivée. Les routes authentifiées n'en ont pas encore :
+  à ajouter avec la garde d'auth, dès que le `loader` pourra échouer sur une erreur réseau.
 - La `Topbar` affiche un nom et un avatar **en dur** : à brancher sur
   `users.first_name` / `last_name` quand la session existera.
 - **Supabase n'est pas installé** : les pages d'auth sont vides. `@supabase/supabase-js`

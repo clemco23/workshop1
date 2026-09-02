@@ -6,7 +6,7 @@ function Card({ title, subtitle, action, padded = true, className, children }) {
   const hasHeader = title || action
 
   return (
-    <section className={cn('rounded-xl border border-slate-200 bg-white shadow-xs', className)}>
+    <section className={cn('min-w-0 rounded-xl border border-slate-200 bg-white shadow-xs', className)}>
       {hasHeader && (
         <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
           <div>
