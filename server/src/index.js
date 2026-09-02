@@ -12,6 +12,7 @@ const missionRoutes = require('./routes/missionRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const projectRoutes = require('./routes/projectRoutes');
+const documentRoutes = require('./routes/documentRoutes');
 const portfolioRoutes = require('./routes/portfolioRoutes');
 const publicPortfolioRoutes = require('./routes/publicPortfolioRoutes');
 
@@ -37,6 +38,7 @@ app.use('/api/missions', missionRoutes);
 app.use('/api/parametres', settingsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/projects', projectRoutes);
+app.use('/api/documents', documentRoutes);
 app.use('/api/portfolios', portfolioRoutes);
 app.use('/api/public', publicPortfolioRoutes);
 
