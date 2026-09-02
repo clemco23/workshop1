@@ -51,34 +51,31 @@ export async function fetchPortfolio(id) {
 }
 
 export async function fetchPortfolioPublic(slug) {
-  if (!USE_MOCKS) {
-    const { data } = await api.get(`/api/public/portfolio/${slug}`)
-    return data
+  if (USE_MOCKS) {
+    const portfolio = portfolios.find((p) => p.slug === slug && p.actif)
+
+    if (portfolio) {
+      return {
+        slug: portfolio.slug,
+        titrePage: portfolio.titrePage,
+        auteur: `${user.firstName} ${user.lastName}`,
+        projets: projetsDuPortfolio(portfolio.id).map(({ titre, description, date, link, tag, type }) => ({
+          titre,
+          description,
+          date,
+          link,
+          tag,
+          type,
+        })),
+      }
+    }
   }
 
-  const portfolio = portfolios.find((p) => p.slug === slug && p.actif)
-  if (!portfolio) return notFound('Portfolio')
-
-  return {
-    slug: portfolio.slug,
-    titrePage: portfolio.titrePage,
-    auteur: `${user.firstName} ${user.lastName}`, // pas d'email en public
-    // Projection explicite : la page publique ne recoit que ces champs, jamais
-    // la ligne complete (pas d'id, pas de mission, pas d'email).
-    // `type` en fait partie : sans lui, la page publique ne peut pas dire si le
-    // lien est une video, un PDF ou une image. Il n'est pas sensible — le lien
-    // le trahit deja. `medias` suivra le jour ou la table `projet_media` existera
-    // (cf. src/lib/medias.js).
-    projets: projetsDuPortfolio(portfolio.id).map(
-      ({ titre, description, date, type, link, medias, tag }) => ({
-        titre,
-        description,
-        date,
-        type,
-        link,
-        medias,
-        tag,
-      }),
-    ),
+  try {
+    const { data } = await api.get(`/api/public/portfolio/${slug}`)
+    return data
+  } catch (error) {
+    if (error.response?.status === 404) return notFound('Portfolio')
+    throw error
   }
 }

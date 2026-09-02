@@ -1,139 +1,104 @@
-import { isRouteErrorResponse, useLoaderData, useRouteError } from 'react-router-dom'
-import Badge from '../components/ui/Badge.jsx'
-import Icon from '../components/ui/Icon.jsx'
+import { useLoaderData } from 'react-router-dom'
 import { fetchPortfolioPublic } from '../api/portfolios.js'
-import { PROJET_TAG, enumMeta } from '../lib/enums.js'
-import { formatDateLongue } from '../lib/format.js'
-import { mediaMeta, mediasProjet } from '../lib/medias.js'
+import { formatDate } from '../lib/format.js'
 
-// SEULE ROUTE PUBLIQUE du site : elle est montee hors d'AppLayout et devra rester
-// hors du futur ProtectedRoute. Elle ne charge pas le client Supabase et n'attend
-// aucune session — un visiteur sans compte doit pouvoir l'ouvrir.
-//
-// Ce que la page affiche est exactement ce que rend GET /api/public/portfolio/:slug,
-// dont la projection est explicite cote api/portfolios.js : ni id, ni mission, ni
-// email, ni montant. Ne jamais afficher ici un champ qui n'est pas dans ce contrat.
-// Un portfolio `actif: false` repond 404 (notFound), pas une page vide.
 export async function loader({ params }) {
-  return { portfolio: await fetchPortfolioPublic(params.slug) }
+  return fetchPortfolioPublic(params.slug)
 }
 
-// Slug inconnu ou page desactivee (`actif: false`) : le loader jette une Response
-// 404. Sans ce garde-fou, react-router afficherait son ecran de dev — a un visiteur
-// qui n'a pas de compte et n'a rien a faire de la pile d'erreur.
-export function ErrorBoundary() {
-  const erreur = useRouteError()
-  const introuvable = isRouteErrorResponse(erreur) && erreur.status === 404
+function videoEmbedUrl(link) {
+  try {
+    const url = new URL(link)
+    const host = url.hostname.replace('www.', '')
+
+    if (host === 'youtube.com' || host === 'youtu.be') {
+      const id = host === 'youtu.be' ? url.pathname.slice(1) : url.searchParams.get('v')
+      return id ? `https://www.youtube.com/embed/${id}` : null
+    }
+    if (host === 'vimeo.com') {
+      const id = url.pathname.split('/').filter(Boolean).at(-1)
+      return id ? `https://player.vimeo.com/video/${id}` : null
+    }
+  } catch {
+    return null
+  }
+
+  return null
+}
+
+function ProjectMedia({ project }) {
+  if (project.type === 'IMAGE') {
+    return <img src={project.link} alt={project.titre} className="h-72 w-full object-cover" />
+  }
+
+  if (project.type === 'PDF') {
+    return <iframe title={project.titre} src={project.link} className="h-96 w-full" loading="lazy" />
+  }
+
+  if (project.type === 'VIDEO') {
+    const embedUrl = videoEmbedUrl(project.link)
+    if (embedUrl) {
+      return <iframe title={project.titre} src={embedUrl} className="aspect-video w-full" allowFullScreen />
+    }
+    return <video className="aspect-video w-full bg-black" controls src={project.link} />
+  }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-white px-6">
-      <div className="max-w-md text-center">
-        <p className="text-xs font-medium tracking-widest text-slate-400 uppercase">
-          {introuvable ? '404' : 'Erreur'}
-        </p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
-          {introuvable ? "Cette page n'existe pas" : 'Cette page est indisponible'}
-        </h1>
-        <p className="mt-2 text-sm text-slate-500">
-          {introuvable
-            ? "Le lien est peut-etre incorrect, ou la page n'est plus publiee."
-            : 'Reessaie dans un moment.'}
-        </p>
-      </div>
-    </div>
+    <a
+      href={project.link}
+      target="_blank"
+      rel="noreferrer"
+      className="flex min-h-48 items-center justify-center bg-slate-100 p-6 font-medium text-indigo-600 underline"
+    >
+      Ouvrir le lien externe
+    </a>
   )
 }
 
 function PortfolioPublic() {
-  const { portfolio } = useLoaderData()
-  const { titrePage, slug, auteur, projets } = portfolio
+  const portfolio = useLoaderData()
 
   return (
-    <div className="min-h-dvh bg-white">
-      <header className="border-b border-slate-200 px-6 py-12 sm:py-16">
-        <div className="mx-auto max-w-3xl">
-          <p className="text-xs font-medium tracking-widest text-brand-700 uppercase">
-            Portfolio
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight break-words text-slate-900 sm:text-4xl">
-            {/* titre_page est nullable : le slug sert alors de titre. */}
-            {titrePage ?? slug}
+    <main className="min-h-screen bg-slate-50 px-4 py-10 sm:px-8">
+      <div className="mx-auto max-w-5xl">
+        <header className="mb-8 border-b border-slate-200 pb-6">
+          <p className="text-sm font-medium tracking-wide text-indigo-600 uppercase">Portfolio</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+            {portfolio.titrePage}
           </h1>
-          <p className="mt-2 text-sm text-slate-500">{auteur}</p>
-        </div>
-      </header>
+          {portfolio.auteur && <p className="mt-2 text-slate-600">{portfolio.auteur}</p>}
+        </header>
 
-      <main className="px-6 py-10 sm:py-14">
-        <div className="mx-auto max-w-3xl">
-          {projets.length === 0 ? (
-            <p className="text-sm text-slate-500">
-              Cette page n'a pas encore de projet selectionne.
-            </p>
-          ) : (
-            <ol className="grid gap-10 sm:gap-14">
-              {projets.map((projet, index) => {
-                const tag = enumMeta(PROJET_TAG, projet.tag)
-                const medias = mediasProjet(projet)
-
-                return (
-                  // La projection publique ne renvoie pas d'id : la cle est
-                  // l'index, la liste etant ordonnee et jamais reordonnee ici.
-                  <li key={index} className="min-w-0">
-                    <article>
-                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                        <h2 className="text-xl font-semibold tracking-tight break-words text-slate-900">
-                          {projet.titre}
-                        </h2>
-                        <Badge tone={tag.tone}>{tag.label}</Badge>
-                      </div>
-
-                      <p className="mt-1 text-xs text-slate-500 tabular-nums">
-                        {formatDateLongue(projet.date)}
-                      </p>
-
-                      {projet.description && (
-                        <p className="mt-3 text-sm leading-relaxed break-words text-slate-600">
-                          {projet.description}
-                        </p>
-                      )}
-
-                      {medias.length > 0 && (
-                        <ul className="mt-4 flex flex-wrap gap-2">
-                          {medias.map((media) => {
-                            const meta = mediaMeta(media.type)
-                            if (!media.url) return null
-
-                            return (
-                              <li key={media.id} className="min-w-0">
-                                <a
-                                  href={media.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
-                                >
-                                  <Icon name={meta.icon} className="size-4 shrink-0" />
-                                  <span className="truncate">{media.titre}</span>
-                                </a>
-                              </li>
-                            )
-                          })}
-                        </ul>
-                      )}
-                    </article>
-                  </li>
-                )
-              })}
-            </ol>
-          )}
-        </div>
-      </main>
-
-      <footer className="border-t border-slate-200 px-6 py-8">
-        <div className="mx-auto max-w-3xl text-xs text-slate-400">
-          {auteur} — /portfolio/{slug}
-        </div>
-      </footer>
-    </div>
+        {portfolio.projets.length === 0 ? (
+          <p className="rounded-xl border border-slate-200 bg-white p-6 text-slate-600">
+            Ce portfolio ne contient pas encore de projet.
+          </p>
+        ) : (
+          <section className="grid gap-6 md:grid-cols-2">
+            {portfolio.projets.map((project) => (
+              <article
+                key={`${project.ordre}-${project.titre}`}
+                className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+              >
+                <ProjectMedia project={project} />
+                <div className="p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="font-semibold text-slate-950">{project.titre}</h2>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                      {project.tag === 'PRO' ? 'Pro' : 'Perso'}
+                    </span>
+                  </div>
+                  {project.description && (
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{project.description}</p>
+                  )}
+                  <p className="mt-3 text-xs text-slate-500">{formatDate(project.date)}</p>
+                </div>
+              </article>
+            ))}
+          </section>
+        )}
+      </div>
+    </main>
   )
 }
 
