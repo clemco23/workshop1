@@ -1,5 +1,5 @@
 import { api, USE_MOCKS } from './client.js'
-import { documents, missions } from '../mocks/db.js'
+import { ajouterDocument, documents, missions } from '../mocks/db.js'
 
 // Contrats attendus cote server :
 //   GET /api/documents?categorie=&missionId=  -> Document[]
@@ -26,4 +26,37 @@ export async function fetchDocuments(filtres = {}) {
       ...d,
       mission: d.missionId ? (missions.find((m) => m.id === d.missionId) ?? null) : null,
     }))
+}
+
+// Depot d'un justificatif.
+//
+// Contrat attendu de POST /api/documents, en `multipart/form-data` :
+//   file       le fichier (le serveur en tire nom_original, taille, mime_type)
+//   categorie  valeur de DocumentCategory
+//   missionId  facultatif — mission_id est nullable
+// Reponse : le Document cree.
+//
+// C'est au serveur de decider `fichier_path` et de deposer le fichier dans un
+// bucket **prive** : contrairement aux medias de projet, un justificatif ne doit
+// jamais avoir d'URL publique.
+export async function createDocument({ fichier, categorie, missionId }) {
+  if (!USE_MOCKS) {
+    const corps = new FormData()
+    corps.append('file', fichier)
+    corps.append('categorie', categorie)
+    if (missionId) corps.append('missionId', missionId)
+
+    // Pas de Content-Type pose a la main : axios doit ecrire lui-meme la
+    // frontiere du multipart.
+    const { data } = await api.post('/api/documents', corps)
+    return data
+  }
+
+  return ajouterDocument({
+    categorie,
+    missionId,
+    nomOriginal: fichier.name,
+    taille: fichier.size,
+    mimeType: fichier.type,
+  })
 }

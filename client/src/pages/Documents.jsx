@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useLoaderData } from 'react-router-dom'
+import { useLoaderData, useRevalidator } from 'react-router-dom'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Card from '../components/ui/Card.jsx'
 import Button from '../components/ui/Button.jsx'
@@ -30,6 +30,7 @@ const filtresVides = { categorie: '', missionId: '', recherche: '' }
 
 function Documents() {
   const { documents, missions } = useLoaderData()
+  const revalidator = useRevalidator()
   const [filtres, setFiltres] = useState(filtresVides)
 
   // Documents charges une fois puis filtres en memoire : instantane, et rien a
@@ -59,7 +60,9 @@ function Documents() {
         title="Documents"
         subtitle={`${documents.length} document(s) · ${formatTaille(totalTaille(documents))}`}
       >
-        <Button disabled title="Upload a venir : l'endpoint serveur reste a ecrire">
+        {/* Le formulaire vit dans la colonne de droite, sous la liste en dessous
+            de `lg` : l'ancre y emmene au lieu de dupliquer le controle. */}
+        <Button as="a" href="#ajouter-document">
           <Icon name="upload" className="size-4" />
           Ajouter un document
         </Button>
@@ -160,7 +163,13 @@ function Documents() {
           )}
         </div>
 
-        <DocumentsUpload />
+        {/* Apres un depot, on relance le loader de la route plutot que de
+            bricoler la liste en memoire : une seule source de verite. */}
+        {/* `scroll-mt` : la topbar est collante, sans marge de defilement l'ancre
+            deposerait la carte dessous. */}
+        <div id="ajouter-document" className="min-w-0 scroll-mt-20">
+          <DocumentsUpload missions={missions} onAjoute={() => revalidator.revalidate()} />
+        </div>
       </div>
     </>
   )
