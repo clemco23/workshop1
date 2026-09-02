@@ -31,6 +31,12 @@ export const user = {
   createdAt: jour(-14, 12),
 }
 
+// Code de connexion accepte tant que les mocks sont actifs : aucun mail n'est
+// envoye, il faut donc une valeur connue pour traverser /login -> /verify-code.
+// Cote serveur c'est une ligne de email_verification_code, tiree au hasard et
+// stockee en bcrypt — rien de tout ca n'est simule ici.
+export const CODE_MOCK = '000000'
+
 // config_seuil : 507 h est le seuil d'intermittence, valeur par defaut du schema.
 export const configSeuil = {
   id: 'c0a1b2c3-d4e5-4f60-8a91-2b3c4d5e6f70',
