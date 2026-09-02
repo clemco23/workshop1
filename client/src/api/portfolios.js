@@ -51,24 +51,31 @@ export async function fetchPortfolio(id) {
 }
 
 export async function fetchPortfolioPublic(slug) {
-  if (!USE_MOCKS) {
-    const { data } = await api.get(`/api/public/portfolio/${slug}`)
-    return data
+  if (USE_MOCKS) {
+    const portfolio = portfolios.find((p) => p.slug === slug && p.actif)
+
+    if (portfolio) {
+      return {
+        slug: portfolio.slug,
+        titrePage: portfolio.titrePage,
+        auteur: `${user.firstName} ${user.lastName}`,
+        projets: projetsDuPortfolio(portfolio.id).map(({ titre, description, date, link, tag, type }) => ({
+          titre,
+          description,
+          date,
+          link,
+          tag,
+          type,
+        })),
+      }
+    }
   }
 
-  const portfolio = portfolios.find((p) => p.slug === slug && p.actif)
-  if (!portfolio) return notFound('Portfolio')
-
-  return {
-    slug: portfolio.slug,
-    titrePage: portfolio.titrePage,
-    auteur: `${user.firstName} ${user.lastName}`, // pas d'email en public
-    projets: projetsDuPortfolio(portfolio.id).map(({ titre, description, date, link, tag }) => ({
-      titre,
-      description,
-      date,
-      link,
-      tag,
-    })),
+  try {
+    const { data } = await api.get(`/api/public/portfolio/${slug}`)
+    return data
+  } catch (error) {
+    if (error.response?.status === 404) return notFound('Portfolio')
+    throw error
   }
 }

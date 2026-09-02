@@ -112,6 +112,13 @@ export function bornesMission(mission, maintenant = Date.now()) {
   return [debut, jour > debut ? jour : debut]
 }
 
+// Duree en jours calendaires, bornes incluses : du 24 au 28 fait 5 jours, pas 4.
+// Sert de repli quand nb_jours est null (il est nullable dans le schema).
+export function nbJoursCalendaires(mission, maintenant = Date.now()) {
+  const [debut, fin] = bornesMission(mission, maintenant)
+  return Math.round((Date.parse(fin) - Date.parse(debut)) / JOUR) + 1
+}
+
 // Comparaison lexicographique : valide sur des dates ISO 'AAAA-MM-JJ'.
 export function couvreJour(mission, cle, maintenant = Date.now()) {
   const [debut, fin] = bornesMission(mission, maintenant)
