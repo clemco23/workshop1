@@ -9,7 +9,6 @@ export const navItems = [
 ]
 
 export const navItemsSecondary = [
-  { to: '/profil', label: 'Profil', icon: 'profil' },
   { to: '/parametres', label: 'Parametres', icon: 'parametres' },
 ]
 

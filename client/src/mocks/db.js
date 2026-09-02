@@ -283,6 +283,11 @@ export const documents = [
   },
 ]
 
+// Le schema ne stocke qu'un seul media par fiche : `type` (ProjectType) + `link`.
+// `medias` n'existe pas en base — il anticipe la table `projet_media` (type, url |
+// fichier_path, titre, ordre) pour les fiches qui montrent plusieurs pieces. Le
+// client lit toujours `mediasProjet()`, qui prend `medias` s'il est la et retombe
+// sinon sur `{ type, link }` : d'ou des fiches des deux formes dans ce jeu.
 export const projets = [
   {
     id: P(1),
@@ -294,6 +299,11 @@ export const projets = [
     type: 'VIDEO',
     date: jour(-10, 21),
     link: 'https://vimeo.com/000000001',
+    medias: [
+      { type: 'VIDEO', url: 'https://vimeo.com/000000001', titre: 'Captation integrale' },
+      { type: 'IMAGE', url: 'https://images.example.com/lys-plateau.jpg', titre: 'Plateau' },
+      { type: 'PDF', url: 'https://files.example.com/lys-dossier-presse.pdf', titre: 'Dossier de presse' },
+    ],
     createdAt: jour(-10, 25),
   },
   {
@@ -318,6 +328,11 @@ export const projets = [
     type: 'VIDEO',
     date: jour(-2, 10),
     link: 'https://vimeo.com/000000003',
+    medias: [
+      { type: 'VIDEO', url: 'https://vimeo.com/000000003' },
+      // Sans `type` : il est devine a l'URL par typeMediaDepuisUrl().
+      { url: 'https://www.radio-ouest.example/article-doc-12min', titre: "L'article" },
+    ],
     createdAt: jour(-2, 14),
   },
   {
@@ -330,6 +345,10 @@ export const projets = [
     type: 'IMAGE',
     date: jour(-6, 8),
     link: 'https://vimeo.com/000000004',
+    medias: [
+      { type: 'IMAGE', url: 'https://images.example.com/essai-led-01.jpg', titre: 'LED 3200K' },
+      { type: 'IMAGE', url: 'https://images.example.com/essai-led-02.jpg', titre: 'LED 5600K' },
+    ],
     createdAt: jour(-6, 9),
   },
   {
@@ -346,9 +365,10 @@ export const projets = [
   },
 ]
 
-// portfolio_public.user_id est @unique dans le schema : un seul portfolio par
-// utilisateur. Le mock est quand meme un tableau, pour que les pages de liste
-// fonctionnent — a trancher cote schema (voir CLAUDE.md).
+// Plusieurs pages publiques par utilisateur : c'est le slug qui est unique, pas
+// le user (cf. server/prisma/schema.prisma). Une page en ligne et une hors ligne,
+// pour que les deux etats soient couverts — un portfolio `actif: false` doit
+// repondre 404 en public, pas une page vide.
 export const portfolios = [
   {
     id: 'f0e1d2c3-b4a5-4968-8776-5a4b3c2d1e00',
@@ -358,6 +378,14 @@ export const portfolios = [
     actif: true,
     createdAt: jour(-9, 14),
   },
+  {
+    id: 'f0e1d2c3-b4a5-4968-8776-5a4b3c2d1e01',
+    userId: USER_ID,
+    slug: 'theo-marchand-doc',
+    titrePage: null, // titre_page est nullable : le slug sert alors de titre
+    actif: false,
+    createdAt: jour(-4, 3),
+  },
 ]
 
 // Table de jonction : quels projets figurent sur le portfolio, et dans quel ordre.
@@ -365,6 +393,9 @@ export const portfolioProjets = [
   { id: 'aa000000-0000-4000-8000-000000000001', portfolioPublicId: portfolios[0].id, projetId: P(1), ordre: 1 },
   { id: 'aa000000-0000-4000-8000-000000000002', portfolioPublicId: portfolios[0].id, projetId: P(5), ordre: 2 },
   { id: 'aa000000-0000-4000-8000-000000000003', portfolioPublicId: portfolios[0].id, projetId: P(2), ordre: 3 },
+  // Un meme projet peut figurer dans deux portfolios, a des positions differentes.
+  { id: 'aa000000-0000-4000-8000-000000000004', portfolioPublicId: portfolios[1].id, projetId: P(3), ordre: 1 },
+  { id: 'aa000000-0000-4000-8000-000000000005', portfolioPublicId: portfolios[1].id, projetId: P(1), ordre: 2 },
 ]
 
 export const db = {

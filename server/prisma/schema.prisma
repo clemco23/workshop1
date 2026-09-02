@@ -148,6 +148,8 @@ model Project {
 
 model PortfolioPublic {
   id          String   @id @default(uuid())
+  // Plusieurs pages publiques par utilisateur (une selection de projets par
+  // usage : fiction, corporate...). C'est le slug qui est unique, pas le user.
   userId      String   @map("user_id")
   slug        String   @unique
   titrePage   String?  @map("titre_page")
@@ -157,6 +159,7 @@ model PortfolioPublic {
   user     User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   projects PortfolioPublicProjet[]
 
+  @@index([userId])
   @@map("portfolio_public")
 }
 

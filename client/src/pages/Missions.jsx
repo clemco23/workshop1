@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, useLoaderData } from 'react-router-dom'
+import { useLoaderData } from 'react-router-dom'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Card from '../components/ui/Card.jsx'
 import Button from '../components/ui/Button.jsx'
@@ -12,6 +12,7 @@ import MissionsTimeline from '../components/missions/MissionsTimeline.jsx'
 import MissionsAgenda from '../components/missions/MissionsAgenda.jsx'
 import MissionsResume from '../components/missions/MissionsResume.jsx'
 import MissionsLegende from '../components/missions/MissionsLegende.jsx'
+import MissionFormModal from '../components/missions/MissionFormModal.jsx'
 import { fetchMissions } from '../api/missions.js'
 import { fetchConfigSeuil } from '../api/compte.js'
 import { construireTimeline, filtrerMissions, totauxMissions } from '../lib/missions.js'
@@ -41,6 +42,7 @@ const vues = [
 function Missions() {
   const { missions, configSeuil } = useLoaderData()
   const [vue, setVue] = useState('liste')
+  const [creation, setCreation] = useState(false)
   const [filtres, setFiltres] = useState({ type: '', statut: '', client: '' })
 
   // Les missions sont chargees une fois puis filtrees en memoire : le filtrage
@@ -66,7 +68,7 @@ function Missions() {
   return (
     <>
       <PageHeader title="Missions" subtitle={`${missions.length} missions enregistrees`}>
-        <Button as={Link} to="/missions">
+        <Button onClick={() => setCreation(true)}>
           <Icon name="plus" className="size-4" />
           Nouvelle mission
         </Button>
@@ -104,6 +106,12 @@ function Missions() {
 
         <Tabs options={vues} value={vue} onChange={setVue} ariaLabel="Vue des missions" />
       </div>
+
+      <MissionFormModal
+        ouvert={creation}
+        onClose={() => setCreation(false)}
+        heuresJourDefaut={configSeuil.heuresJourDefaut}
+      />
 
       <MissionsResume totaux={totaux} />
 
