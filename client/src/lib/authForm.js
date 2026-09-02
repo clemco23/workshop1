@@ -23,6 +23,24 @@ export function validerEmail(valeur) {
   return null
 }
 
+export const LONGUEUR_CODE = 6
+
+// Le champ ne doit jamais contenir autre chose que des chiffres : on filtre a
+// la saisie plutot que de refuser apres coup (un collage depuis un mail peut
+// trainer une espace).
+export function nettoyerCode(valeur) {
+  return valeur.replace(/\D/g, '').slice(0, LONGUEUR_CODE)
+}
+
+export function validerCode(valeur) {
+  const code = nettoyerCode(valeur)
+
+  if (code === '') return 'Code obligatoire.'
+  if (code.length < LONGUEUR_CODE) return `Le code fait ${LONGUEUR_CODE} chiffres.`
+
+  return null
+}
+
 // Erreur axios -> phrase affichable. Le statut vient de `../server` :
 // 400 email refuse, 502 envoi echoue, 503 service email non configure.
 export function messageErreur(error) {
@@ -33,6 +51,9 @@ export function messageErreur(error) {
   const { status, data } = error.response
 
   if (status === 400) return data?.message ?? 'Adresse email invalide.'
+  // Sur /verify-code : l'adresse n'existe plus cote serveur. Il faut repartir
+  // de la demande de code, un nouveau code ne servirait a rien.
+  if (status === 404) return 'Adresse inconnue. Recommence la connexion.'
   if (status === 502) return "L'email n'a pas pu etre envoye. Reessaie dans un instant."
   if (status === 503) return "Le service d'envoi des codes est indisponible."
 
