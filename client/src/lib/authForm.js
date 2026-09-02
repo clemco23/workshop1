@@ -1,3 +1,5 @@
+import { messageErreur as messageErreurApi } from './erreurs.js'
+
 // Formulaire de connexion : validation de l'email et traduction des erreurs de
 // l'API en message affichable. Fonctions pures, memes conventions que
 // missionForm.js / portfolioForm.js — le serveur reste seul juge, ce qui est ici
@@ -41,24 +43,18 @@ export function validerCode(valeur) {
   return null
 }
 
-// Erreur axios -> phrase affichable. Le statut vient de `../server` :
-// 400 email refuse, 502 envoi echoue, 503 service email non configure.
+// Erreurs de l'API d'authentification. Le tronc commun est dans erreurs.js ;
+// ici on ne formule que les statuts dont le message serveur ne dit pas quoi
+// faire ensuite. Le 400 (email refuse, code invalide) passe par le message de
+// l'API, qui est deja precis.
 export function messageErreur(error) {
-  if (!error.response) {
-    return "Serveur injoignable. Verifie ta connexion, puis reessaie."
-  }
-
-  const { status, data } = error.response
-
-  if (status === 400) return data?.message ?? 'Adresse email invalide.'
-  // Sur /verify-code : l'adresse n'existe plus cote serveur. Il faut repartir
-  // de la demande de code, un nouveau code ne servirait a rien.
-  if (status === 404) return 'Adresse inconnue. Recommence la connexion.'
-  if (status === 502) return "L'email n'a pas pu etre envoye. Reessaie dans un instant."
-  if (status === 503) return "Le service d'envoi des codes est indisponible."
-
-  // Le serveur renvoie aussi 500 quand Gmail n'est pas configure (le 503 prevu
-  // ne part pas, cf. le code d'erreur desynchronise note dans server/CLAUDE.md),
-  // donc pas de message plus precis ici : ce serait deviner.
-  return 'Erreur serveur. Reessaie dans un instant.'
+  return messageErreurApi(error, {
+    // L'adresse n'existe plus cote serveur : un nouveau code ne servirait a
+    // rien, il faut repartir de la demande.
+    404: 'Adresse inconnue. Recommence la connexion.',
+    502: "L'email n'a pas pu etre envoye. Reessaie dans un instant.",
+    503: "Le service d'envoi des codes est indisponible.",
+    // Le serveur renvoie aussi 500 quand Gmail n'est pas configure : pas de
+    // message plus precis ici, ce serait deviner.
+  })
 }

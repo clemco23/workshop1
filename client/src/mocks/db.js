@@ -404,6 +404,29 @@ export const portfolioProjets = [
   { id: 'aa000000-0000-4000-8000-000000000005', portfolioPublicId: portfolios[1].id, projetId: P(1), ordre: 2 },
 ]
 
+// Les mocks acceptent quelques ecritures, pour que les formulaires soient
+// testables avant le back. On pousse dans le tableau **lu par api/documents.js**
+// — pas dans une copie — donc un revalidate de la route suffit a voir la ligne
+// apparaitre. Rien n'est persiste : un rechargement remet le jeu d'origine.
+export function ajouterDocument({ categorie, missionId, nomOriginal, taille, mimeType }) {
+  const document = {
+    id: crypto.randomUUID(),
+    userId: USER_ID,
+    missionId: missionId || null,
+    categorie,
+    // Le vrai chemin sera decide par le serveur au moment du depot ; ici on
+    // imite juste sa forme (prefixe par utilisateur).
+    fichierPath: `${USER_ID}/documents/${nomOriginal}`,
+    nomOriginal,
+    taille,
+    mimeType,
+    uploadedAt: new Date().toISOString(),
+  }
+
+  documents.unshift(document)
+  return document
+}
+
 export const db = {
   user,
   configSeuil,
