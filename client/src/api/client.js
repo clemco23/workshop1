@@ -2,7 +2,7 @@ import axios from 'axios'
 
 // Instance axios unique : jamais d'URL absolue codee en dur dans les pages.
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4000',
   timeout: 10000,
   headers: { Accept: 'application/json' },
 })
