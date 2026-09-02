@@ -13,12 +13,16 @@ import { CODE_MOCK, user } from '../mocks/db.js'
 
 // Demande d'un code a usage unique. Le meme appel vaut inscription : pas de
 // formulaire d'inscription distinct a appeler.
-export async function requestCode(email) {
+//
+// `identite` ({ firstName, lastName }) n'est envoyee que par /signup, et le
+// serveur ne l'applique qu'a la creation du compte : une demande de code sur un
+// compte existant ne renomme personne.
+export async function requestCode(email, identite = {}) {
   if (USE_MOCKS) {
     return { success: true, message: `Code simule : ${CODE_MOCK}`, email }
   }
 
-  const { data } = await api.post('/api/auth/request-code', { email })
+  const { data } = await api.post('/api/auth/request-code', { email, ...identite })
   return data
 }
 

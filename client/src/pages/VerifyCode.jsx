@@ -22,6 +22,8 @@ function VerifyCode() {
   // l'adresse n'a rien a faire dans l'URL, et l'etat disparait au rechargement.
   const { state } = useLocation()
   const email = state?.email ?? null
+  // Depose par /signup : seule la formulation change, l'appel est le meme.
+  const nouveau = state?.nouveau === true
 
   const [code, setCode] = useState('')
   const [touche, setTouche] = useState(false)
@@ -88,7 +90,7 @@ function VerifyCode() {
 
   return (
     <AuthShell
-      titre="Verification"
+      titre={nouveau ? 'Confirme ton adresse' : 'Verification'}
       description={
         <>
           Entre le code a six chiffres envoye a{' '}
@@ -99,8 +101,11 @@ function VerifyCode() {
       pied={
         <>
           Mauvaise adresse ?{' '}
-          <Link to="/login" className="font-medium text-brand-700 hover:underline">
-            Revenir a la connexion
+          <Link
+            to={nouveau ? '/signup' : '/login'}
+            className="font-medium text-brand-700 hover:underline"
+          >
+            {nouveau ? 'Revenir a la creation de compte' : 'Revenir a la connexion'}
           </Link>
         </>
       }

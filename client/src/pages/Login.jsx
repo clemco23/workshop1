@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import AuthShell from '../components/auth/AuthShell.jsx'
 import Button from '../components/ui/Button.jsx'
 import Icon from '../components/ui/Icon.jsx'
@@ -51,7 +51,14 @@ function Login() {
     <AuthShell
       titre="Connexion"
       description="Entre ton adresse : on t'envoie un code a six chiffres, valable dix minutes."
-      pied="Pas de mot de passe a retenir. Premiere visite ? Ton compte est cree a la premiere connexion."
+      pied={
+        <>
+          Pas de mot de passe a retenir. Premiere visite ?{' '}
+          <Link to="/signup" className="font-medium text-brand-700 hover:underline">
+            Creer un compte
+          </Link>
+        </>
+      }
     >
       <form onSubmit={envoyer} noValidate className="mt-8 grid gap-4">
         <Input
