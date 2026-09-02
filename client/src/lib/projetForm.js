@@ -16,6 +16,30 @@ export const PROJET_VIDE = {
   missionId: '',
 }
 
+// Fiche de l'API -> valeurs du formulaire (des chaines). Comme pour les
+// missions, la date arrive en ISO UTC et l'<input type="date"> attend
+// 'AAAA-MM-JJ' : les dix premiers caracteres de l'ISO sont deja la date UTC,
+// donc pas de passage par l'heure locale, qui decalerait d'un jour a l'ouest de
+// Greenwich.
+export function versFormulaire(projet) {
+  return {
+    titre: projet.titre ?? '',
+    description: projet.description ?? '',
+    tag: projet.tag,
+    type: projet.type,
+    date: projet.date ? projet.date.slice(0, 10) : '',
+    link: projet.link ?? '',
+    missionId: projet.missionId ?? '',
+  }
+}
+
+// Y a-t-il quelque chose a enregistrer ? Comparaison champ a champ, apres
+// normalisation par versFormulaire.
+export function estModifie(formulaire, projet) {
+  const initial = versFormulaire(projet)
+  return Object.keys(initial).some((cle) => initial[cle] !== formulaire[cle])
+}
+
 // Le lien part sur une page publique : n'accepter que http(s), pour ne pas
 // laisser passer un `javascript:` ou un chemin local qui ne mene nulle part.
 function lienValide(valeur) {

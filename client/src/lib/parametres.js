@@ -53,6 +53,17 @@ export function validerParametres(formulaire) {
   }
 }
 
+// Corps attendu par PUT /api/parametres : des nombres, la ou le formulaire tient
+// des chaines. Le serveur revalide (entier strictement positif pour le seuil et
+// la fenetre, nombre positif pour les heures) et refuse un corps vide.
+export function versPayload(formulaire) {
+  return {
+    seuilHeuresAnnuel: Number(formulaire.seuilHeuresAnnuel),
+    heuresJourDefaut: Number(formulaire.heuresJourDefaut),
+    fenetreMois: Number(formulaire.fenetreMois),
+  }
+}
+
 export function estModifie(formulaire, configSeuil) {
   const initial = versFormulaire(configSeuil)
   return Object.keys(initial).some((cle) => Number(initial[cle]) !== Number(formulaire[cle]))

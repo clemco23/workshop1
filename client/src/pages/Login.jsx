@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import AuthShell from '../components/auth/AuthShell.jsx'
 import Button from '../components/ui/Button.jsx'
 import Icon from '../components/ui/Icon.jsx'
@@ -13,6 +13,11 @@ import { messageErreur, normaliserEmail, validerEmail } from '../lib/authForm.js
 // distinguer ici entre un nouveau venu et un habitue.
 function Login() {
   const navigate = useNavigate()
+  // Depose soit par la garde d'authentification (`depuis` : la page demandee
+  // sans session), soit par RouteError quand le jeton a expire en cours de
+  // route (`info` : la raison, a afficher). Les deux transitent par l'etat de
+  // navigation, jamais par l'URL.
+  const { state } = useLocation()
   const [email, setEmail] = useState('')
   const [touche, setTouche] = useState(false)
   const [envoi, setEnvoi] = useState(false)
@@ -37,8 +42,12 @@ function Login() {
       // L'email voyage par l'etat de navigation, pas par l'URL : /verify-code en
       // a besoin pour le second appel, et une adresse n'a rien a faire dans un
       // historique de navigateur. Le message de l'API suit, pour que l'ecran
-      // suivant confirme l'envoi (et, en mock, annonce le code a saisir).
-      navigate('/verify-code', { state: { email: adresse, info: reponse?.message } })
+      // suivant confirme l'envoi.
+      // `depuis` est relaye : c'est /verify-code qui, apres l'echange du code,
+      // ramene l'utilisateur la ou il allait.
+      navigate('/verify-code', {
+        state: { email: adresse, info: reponse?.message, depuis: state?.depuis },
+      })
     } catch (error) {
       setErreurApi(messageErreur(error))
       // Pas de remise a zero apres un succes : la page est demontee par la
@@ -61,6 +70,12 @@ function Login() {
       }
     >
       <form onSubmit={envoyer} noValidate className="mt-8 grid gap-4">
+        {state?.info && (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            {state.info}
+          </p>
+        )}
+
         <Input
           label="Adresse email"
           type="email"

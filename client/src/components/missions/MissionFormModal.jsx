@@ -1,11 +1,19 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import Modal from '../ui/Modal.jsx'
 import Button from '../ui/Button.jsx'
 import Input from '../ui/Input.jsx'
 import Select from '../ui/Select.jsx'
 import { MISSION_STATUT, MISSION_TYPE } from '../../lib/enums.js'
-import { MISSION_VIDE, estModifie, validerMission, versFormulaire } from '../../lib/missionForm.js'
+import {
+  MISSION_VIDE,
+  estModifie,
+  validerMission,
+  versFormulaire,
+  versPayload,
+} from '../../lib/missionForm.js'
+import { createMission, updateMission } from '../../api/missions.js'
 import { formatHeures, num } from '../../lib/format.js'
+import { messageErreur } from '../../lib/erreurs.js'
 
 const optionsType = Object.entries(MISSION_TYPE).map(([value, meta]) => ({
   value,
@@ -20,11 +28,14 @@ const optionsStatut = Object.entries(MISSION_STATUT).map(([value, meta]) => ({
 // Creation *et* edition d'une mission : les champs, les regles et les messages
 // sont les memes, seul l'intitule change. Passer `mission` bascule en edition.
 //
-// Le formulaire se remplit et se valide entierement, mais ni POST /api/missions
-// ni PUT /api/missions/:id ne sont ecrits : le bouton reste desactive plutot que
-// de faire disparaitre la saisie dans le vide. Le jour venu, il n'y a qu'a
-// envoyer `versPayload(formulaire)` — validation, etat et remise a zero sont la.
-function MissionFormModal({ ouvert, onClose, heuresJourDefaut, mission = null }) {
+// La validation du client est un garde-fou d'ergonomie : le serveur revalide
+// tout (`missionData()`), et c'est son message qui s'affiche en cas de refus.
+//
+// `onEnregistre` recoit la mission renvoyee par l'API. C'est la page qui decide
+// quoi en faire (revalider la route, naviguer) : le composant ne connait pas le
+// routeur.
+function MissionFormModal({ ouvert, onClose, heuresJourDefaut, mission = null, onEnregistre }) {
+  const idFormulaire = useId()
   const edition = mission != null
   const valeursInitiales = useMemo(
     () => (edition ? versFormulaire(mission) : MISSION_VIDE),
@@ -32,6 +43,8 @@ function MissionFormModal({ ouvert, onClose, heuresJourDefaut, mission = null })
   )
 
   const [formulaire, setFormulaire] = useState(valeursInitiales)
+  const [envoi, setEnvoi] = useState(false)
+  const [erreurApi, setErreurApi] = useState(null)
   const { erreurs, valide } = useMemo(() => validerMission(formulaire), [formulaire])
 
   // Re-partir des valeurs de la mission a chaque ouverture : sans ca, une saisie
@@ -41,7 +54,10 @@ function MissionFormModal({ ouvert, onClose, heuresJourDefaut, mission = null })
   const [etaitOuvert, setEtaitOuvert] = useState(ouvert)
   if (ouvert !== etaitOuvert) {
     setEtaitOuvert(ouvert)
-    if (ouvert) setFormulaire(valeursInitiales)
+    if (ouvert) {
+      setFormulaire(valeursInitiales)
+      setErreurApi(null)
+    }
   }
 
   const setChamp = (cle) => (valeur) => setFormulaire((etat) => ({ ...etat, [cle]: valeur }))
@@ -49,8 +65,36 @@ function MissionFormModal({ ouvert, onClose, heuresJourDefaut, mission = null })
   const modifie = edition ? estModifie(formulaire, mission) : true
 
   const fermer = () => {
+    if (envoi) return // pendant l'appel, la seule issue est la reponse du serveur
     setFormulaire(valeursInitiales)
+    setErreurApi(null)
     onClose()
+  }
+
+  // PATCH en edition : le serveur ne valide et n'ecrit que les champs presents.
+  // On envoie le payload entier — le formulaire les tient tous — plutot que de
+  // calculer un delta, qui divergerait de ce que l'utilisateur voit a l'ecran.
+  async function enregistrer(event) {
+    event.preventDefault()
+    if (!valide || !modifie || envoi) return
+
+    setEnvoi(true)
+    setErreurApi(null)
+
+    try {
+      const payload = versPayload(formulaire)
+      const enregistree = edition
+        ? await updateMission(mission.id, payload)
+        : await createMission(payload)
+
+      onEnregistre?.(enregistree)
+      setFormulaire(valeursInitiales)
+      onClose()
+    } catch (error) {
+      setErreurApi(messageErreur(error))
+    } finally {
+      setEnvoi(false)
+    }
   }
 
   // Meme regle que partout : heures vides = nb_jours x heures/jour par defaut.
@@ -71,30 +115,31 @@ function MissionFormModal({ ouvert, onClose, heuresJourDefaut, mission = null })
       }
       footer={
         <>
-          <Button variant="secondary" onClick={fermer}>
+          <Button variant="secondary" onClick={fermer} disabled={envoi}>
             Annuler
           </Button>
-          {/* Toujours desactive : l'endpoint n'existe pas. Un bouton actif qui ne
-              fait rien serait pire qu'un bouton grise. `valide` ne sert donc qu'a
-              expliquer *pourquoi* dans l'infobulle, en plus des erreurs de champ. */}
+          {/* Le pied du <dialog> est hors du <form> : `form` relie quand meme le
+              bouton a la saisie, sans sortir le formulaire de la mise en page. */}
           <Button
-            disabled
+            type="submit"
+            form={idFormulaire}
+            disabled={!valide || !modifie || envoi}
             title={
               !valide
                 ? 'Corrige les champs en rouge'
-                : edition
-                  ? "Edition a venir : PUT /api/missions/:id n'est pas encore en ligne"
-                  : "Creation a venir : POST /api/missions n'est pas encore en ligne"
+                : !modifie
+                  ? 'Aucune modification a enregistrer'
+                  : undefined
             }
           >
-            {edition ? 'Enregistrer' : 'Creer la mission'}
+            {envoi ? 'Enregistrement…' : edition ? 'Enregistrer' : 'Creer la mission'}
           </Button>
         </>
       }
     >
-      {/* Pas de <form onSubmit> tant qu'il n'y a rien a envoyer : la soumission
-          au clavier ne doit pas donner l'illusion d'un enregistrement. */}
-      <div className="grid gap-4">
+      {/* Un vrai <form> : la touche Entree depuis un champ enregistre, comme
+          partout ailleurs. */}
+      <form id={idFormulaire} onSubmit={enregistrer} noValidate className="grid gap-4">
         <Input
           label="Client / production"
           value={formulaire.clientProduction}
@@ -206,17 +251,21 @@ function MissionFormModal({ ouvert, onClose, heuresJourDefaut, mission = null })
           />
         </div>
 
-        <p className="border-t border-slate-100 pt-3 text-xs text-amber-700">
-          {edition
-            ? "Enregistrement indisponible : PUT /api/missions/:id n'est pas encore en ligne."
-            : "Creation indisponible : POST /api/missions n'est pas encore en ligne."}
-        </p>
-        {/* En edition, dire ce qui partirait a l'enregistrement : sans ca, un
-            bouton grise ne distingue pas « rien change » de « pas branche ». */}
+        {erreurApi && (
+          <p
+            role="alert"
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+          >
+            {erreurApi}
+          </p>
+        )}
+
+        {/* En edition, un bouton grise doit distinguer « rien change » de
+            « champs invalides ». */}
         {edition && !modifie && (
           <p className="text-xs text-slate-500">Aucune modification pour l'instant.</p>
         )}
-      </div>
+      </form>
     </Modal>
   )
 }

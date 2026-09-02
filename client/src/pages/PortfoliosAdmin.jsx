@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLoaderData } from 'react-router-dom'
+import { Link, useLoaderData, useNavigate, useRevalidator } from 'react-router-dom'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Card from '../components/ui/Card.jsx'
 import Button from '../components/ui/Button.jsx'
@@ -7,7 +7,8 @@ import Badge from '../components/ui/Badge.jsx'
 import Icon from '../components/ui/Icon.jsx'
 import EmptyState from '../components/ui/EmptyState.jsx'
 import PortfolioFormModal from '../components/portfolios/PortfolioFormModal.jsx'
-import { fetchPortfolios } from '../api/portfolios.js'
+import ConfirmDialog from '../components/ui/ConfirmDialog.jsx'
+import { deletePortfolio, fetchPortfolios } from '../api/portfolios.js'
 import { formatDate } from '../lib/format.js'
 
 export async function loader() {
@@ -16,7 +17,10 @@ export async function loader() {
 
 function PortfoliosAdmin() {
   const { portfolios } = useLoaderData()
+  const revalidator = useRevalidator()
+  const navigate = useNavigate()
   const [creation, setCreation] = useState(false)
+  const [aSupprimer, setASupprimer] = useState(null)
 
   return (
     <>
@@ -30,12 +34,24 @@ function PortfoliosAdmin() {
         </Button>
       </PageHeader>
 
-      {/* Le slug est unique en base : la liste chargee sert a signaler la
-          collision avant l'aller-retour serveur. */}
+      {/* Une page nait vide : on emmene directement sur sa fiche, ou se fait la
+          selection des projets — sans ca, la carte ajoutee dirait « 0 projet »
+          sans dire ou les ajouter. */}
       <PortfolioFormModal
         ouvert={creation}
         onClose={() => setCreation(false)}
-        slugsExistants={portfolios.map((p) => p.slug)}
+        onCree={(portfolio) => navigate(`/portfolios/${portfolio.id}`)}
+      />
+
+      <ConfirmDialog
+        ouvert={aSupprimer != null}
+        onClose={() => setASupprimer(null)}
+        onConfirmer={async () => {
+          await deletePortfolio(aSupprimer.id)
+          revalidator.revalidate()
+        }}
+        titre="Supprimer cette page ?"
+        description={`« ${aSupprimer?.titrePage ?? aSupprimer?.slug} » sera retiree et son adresse publique cessera de repondre. Tes fiches projet, elles, sont conservees.`}
       />
 
       {portfolios.length === 0 ? (
@@ -81,6 +97,17 @@ function PortfoliosAdmin() {
                 </span>
 
                 <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setASupprimer(portfolio)}
+                    title="Supprimer la page"
+                    className="rounded p-1 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                  >
+                    <Icon name="corbeille" className="size-3.5" />
+                    <span className="sr-only">
+                      Supprimer {portfolio.titrePage ?? portfolio.slug}
+                    </span>
+                  </button>
                   {/* Pas de lien quand la page est hors ligne : l'adresse
                       publique repond 404 (cf. fetchPortfolioPublic). */}
                   {portfolio.actif && (

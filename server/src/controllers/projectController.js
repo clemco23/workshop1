@@ -72,7 +72,7 @@ async function projectData(body, userId, partial = false) {
 
 async function listProjectsController(req, res, next) {
   try {
-    const { tag, type } = req.query;
+    const { tag, type, missionId } = req.query;
     const where = { userId: req.user.id };
 
     if (tag) {
@@ -84,7 +84,17 @@ async function listProjectsController(req, res, next) {
       where.type = type;
     }
 
-    const projects = await prisma.project.findMany({ where, orderBy: { date: 'desc' } });
+    // Meme convention que les documents : `aucune` liste les fiches non
+    // rattachees (mission_id est nullable — un projet perso n'a pas de mission).
+    if (missionId) where.missionId = missionId === 'aucune' ? null : missionId;
+
+    // La mission est incluse parce que la liste l'affiche sur chaque carte :
+    // sans elle, une fiche rattachee s'afficherait comme un projet perso.
+    const projects = await prisma.project.findMany({
+      where,
+      include: { mission: true },
+      orderBy: { date: 'desc' },
+    });
     return res.status(200).json(projects);
   } catch (error) {
     return next(error);
@@ -95,11 +105,36 @@ async function getProjectController(req, res, next) {
   try {
     const project = await prisma.project.findFirst({
       where: { id: req.params.id, userId: req.user.id },
-      include: { mission: true },
+      include: {
+        mission: true,
+        // Les pages publiques ou la fiche figure : c'est ce qui dit a
+        // l'utilisateur si sa realisation est exposee, et a quelle position.
+        // Selection explicite plutot que l'entite entiere — `user_id` n'a rien
+        // a faire dans une reponse, meme authentifiee.
+        portfolioLinks: {
+          orderBy: { ordre: 'asc' },
+          include: {
+            portfolioPublic: {
+              select: { id: true, slug: true, titrePage: true, actif: true },
+            },
+          },
+        },
+      },
     });
 
     if (!project) return res.status(404).json({ message: 'Projet introuvable' });
-    return res.status(200).json(project);
+
+    // La jonction est aplatie avant d'etre renvoyee : le client lit un tableau
+    // de portfolios portant leur `ordre`, pas la table de liaison.
+    const { portfolioLinks, ...fiche } = project;
+
+    return res.status(200).json({
+      ...fiche,
+      portfolios: portfolioLinks.map(({ ordre, portfolioPublic }) => ({
+        ...portfolioPublic,
+        ordre,
+      })),
+    });
   } catch (error) {
     return next(error);
   }

@@ -34,7 +34,7 @@ function ProjetMedias({ projet }) {
               </a>
             ) : (
               <span
-                title="Fichier stocke : lien signe a venir du serveur"
+                title="Fichier stocke : pas d'adresse publique"
                 className={`${classes} bg-slate-50 text-slate-400`}
               >
                 <Icon name={meta.icon} className="size-3.5" />

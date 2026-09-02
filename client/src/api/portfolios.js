@@ -1,81 +1,55 @@
-import { api, USE_MOCKS, notFound } from './client.js'
-import { portfolioProjets, portfolios, projets, user } from '../mocks/db.js'
+import { api } from './client.js'
 
-// Contrats attendus cote server :
-//   GET /api/portfolios                    -> PortfolioPublic[]
-//   GET /api/portfolios/:id                -> PortfolioPublic + projets ordonnes
-//   PUT /api/portfolios/:id/projets        -> reordonnancement (a faire)
-//   GET /api/public/portfolio/:slug        -> vue publique, SANS auth
+// Contrats cote server (voir ../../server/CLAUDE.md) :
+//   GET    /api/portfolios                     -> PortfolioPublic[] (+ nbProjets, publicUrl)
+//   POST   /api/portfolios                     -> 201 portfolio (le slug est genere par le serveur)
+//   GET    /api/portfolios/:id                 -> portfolio + projets + projetsDisponibles
+//   PATCH  /api/portfolios/:id                 -> titrePage et actif seulement
+//   PUT    /api/portfolios/:id/projects        -> remplace toute la selection
+//   DELETE /api/portfolios/:id                 -> 204
+//   GET    /api/public/portfolio/:slug         -> vue publique, SANS auth
 //
-// La derniere est la seule route publique du site (cf. CLAUDE.md) : elle ne doit
-// jamais exiger de session ni fuiter d'autre champ que ceux affiches.
-
-// Projets d'un portfolio, dans l'ordre de la table de jonction.
-function projetsDuPortfolio(portfolioId) {
-  return portfolioProjets
-    .filter((lien) => lien.portfolioPublicId === portfolioId)
-    .sort((a, b) => a.ordre - b.ordre)
-    .map((lien) => ({
-      ordre: lien.ordre,
-      ...projets.find((p) => p.id === lien.projetId),
-    }))
-}
+// La derniere est la seule route publique du site : elle ne doit jamais exiger
+// de session ni renvoyer d'autre champ que ceux affiches.
 
 export async function fetchPortfolios() {
-  if (!USE_MOCKS) {
-    const { data } = await api.get('/api/portfolios')
-    return data
-  }
-
-  return portfolios.map((p) => ({ ...p, nbProjets: projetsDuPortfolio(p.id).length }))
+  const { data } = await api.get('/api/portfolios')
+  return data
 }
 
 export async function fetchPortfolio(id) {
-  if (!USE_MOCKS) {
-    const { data } = await api.get(`/api/portfolios/${id}`)
-    return data
-  }
+  const { data } = await api.get(`/api/portfolios/${id}`)
+  return data
+}
 
-  const portfolio = portfolios.find((p) => p.id === id)
-  if (!portfolio) return notFound('Portfolio')
+// Le slug n'est pas dans le corps : le serveur le derive du titre et y ajoute
+// quatre octets aleatoires, puis le fige — un lien deja partage ne doit pas
+// casser. Le client se contente de l'afficher.
+export async function createPortfolio(payload) {
+  const { data } = await api.post('/api/portfolios', payload)
+  return data
+}
 
-  // `projetsDisponibles` : ceux que l'utilisateur peut encore ajouter a la page.
-  const selectionnes = projetsDuPortfolio(portfolio.id)
-  const idsSelectionnes = new Set(selectionnes.map((p) => p.id))
+// Seuls `titrePage` et `actif` sont modifiables.
+export async function updatePortfolio(id, champs) {
+  const { data } = await api.patch(`/api/portfolios/${id}`, champs)
+  return data
+}
 
-  return {
-    ...portfolio,
-    projets: selectionnes,
-    projetsDisponibles: projets.filter((p) => !idsSelectionnes.has(p.id)),
-  }
+// Remplacement de la selection entiere, pas un delta : l'ordre vaut la position
+// dans le tableau. C'est ce qui rend le reordonnancement idempotent — le client
+// envoie la liste telle qu'elle doit etre. La reponse a la meme forme que
+// fetchPortfolio(), donc la page peut s'en servir directement.
+export async function updatePortfolioProjets(id, projectIds) {
+  const { data } = await api.put(`/api/portfolios/${id}/projects`, { projectIds })
+  return data
+}
+
+export async function deletePortfolio(id) {
+  await api.delete(`/api/portfolios/${id}`)
 }
 
 export async function fetchPortfolioPublic(slug) {
-  if (USE_MOCKS) {
-    const portfolio = portfolios.find((p) => p.slug === slug && p.actif)
-
-    if (portfolio) {
-      return {
-        slug: portfolio.slug,
-        titrePage: portfolio.titrePage,
-        auteur: `${user.firstName} ${user.lastName}`,
-        projets: projetsDuPortfolio(portfolio.id).map(({ titre, description, date, link, tag, type }) => ({
-          titre,
-          description,
-          date,
-          link,
-          tag,
-          type,
-        })),
-      }
-    }
-  }
-
-  try {
-    const { data } = await api.get(`/api/public/portfolio/${slug}`)
-    return data
-  } catch (error) {
-    if (error.response?.status === 404) return notFound('Portfolio')
-    throw error
-  }
+  const { data } = await api.get(`/api/public/portfolio/${slug}`)
+  return data
 }

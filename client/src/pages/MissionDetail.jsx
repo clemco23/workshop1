@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLoaderData } from 'react-router-dom'
+import { Link, useLoaderData, useNavigate, useRevalidator } from 'react-router-dom'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Card from '../components/ui/Card.jsx'
 import Button from '../components/ui/Button.jsx'
@@ -10,7 +10,8 @@ import ProgressBar from '../components/ui/ProgressBar.jsx'
 import MissionDocuments from '../components/missions/MissionDocuments.jsx'
 import MissionProjets from '../components/missions/MissionProjets.jsx'
 import MissionFormModal from '../components/missions/MissionFormModal.jsx'
-import { fetchMission } from '../api/missions.js'
+import ConfirmDialog from '../components/ui/ConfirmDialog.jsx'
+import { deleteMission, fetchMission } from '../api/missions.js'
 import { fetchDocuments } from '../api/documents.js'
 import { fetchProjets } from '../api/projets.js'
 import { fetchConfigSeuil } from '../api/compte.js'
@@ -27,8 +28,9 @@ import {
 } from '../lib/format.js'
 import { couleurType } from '../lib/viz.js'
 
-// La mission n'existe pas -> fetchMission jette une Response 404 (cf. api/client.js),
-// que le data router transforme en ecran d'erreur : pas de garde a ecrire ici.
+// La mission n'existe pas -> l'API repond 404 et le loader rejette : `RouteError`
+// (branche sur la coquille, cf. router.jsx) rend l'ecran adequat. Pas de garde a
+// ecrire ici.
 export async function loader({ params }) {
   const mission = await fetchMission(params.id)
 
@@ -58,7 +60,10 @@ function Ligne({ label, hint, children }) {
 
 function MissionDetail() {
   const { mission, configSeuil, documents, projets } = useLoaderData()
+  const revalidator = useRevalidator()
+  const navigate = useNavigate()
   const [edition, setEdition] = useState(false)
+  const [suppression, setSuppression] = useState(false)
 
   const type = enumMeta(MISSION_TYPE, mission.type)
   const statut = enumMeta(MISSION_STATUT, mission.statut)
@@ -91,6 +96,10 @@ function MissionDetail() {
         <Button onClick={() => setEdition(true)}>
           Modifier
         </Button>
+        <Button variant="secondary" onClick={() => setSuppression(true)}>
+          <Icon name="corbeille" className="size-4" />
+          Supprimer
+        </Button>
       </PageHeader>
 
       {/* Meme formulaire qu'a la creation, prerempli : les regles de saisie ne
@@ -100,6 +109,21 @@ function MissionDetail() {
         onClose={() => setEdition(false)}
         heuresJourDefaut={configSeuil.heuresJourDefaut}
         mission={mission}
+        onEnregistre={() => revalidator.revalidate()}
+      />
+
+      {/* La fiche disparait avec la mission : on retourne a la liste plutot que
+          de rester sur une route qui repondrait desormais 404. `replace` pour
+          que le retour arriere n'y ramene pas. */}
+      <ConfirmDialog
+        ouvert={suppression}
+        onClose={() => setSuppression(false)}
+        onConfirmer={async () => {
+          await deleteMission(mission.id)
+          navigate('/missions', { replace: true })
+        }}
+        titre="Supprimer cette mission ?"
+        description={`« ${mission.clientProduction} » sera retiree. Ses documents et fiches projet sont conserves, mais ne seront plus rattaches a aucune mission.`}
       />
 
       {/* Le type se lit par trois canaux redondants — filet colore, pastille,

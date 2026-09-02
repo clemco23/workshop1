@@ -4,8 +4,12 @@ import EmptyState from '../ui/EmptyState.jsx'
 import { mediaMeta, mediasProjet } from '../../lib/medias.js'
 
 // Version detaillee de ProjetMedias : une ligne par media, avec son type ecrit.
-// Pas de vignette : un media uploade n'a qu'un `fichier_path`, et c'est le back
-// qui rendra le lien signe — le client ne fabrique jamais l'URL.
+// Pas de vignette.
+//
+// `projet.link` est une URL *publique* : les medias de projet vivent dans un
+// bucket public, contrairement aux justificatifs de `document`, qui passent par
+// un lien signe. Le repli sans URL ne sert donc qu'a la future table
+// `projet_media`, ou un media pourra n'avoir qu'un chemin de stockage.
 function ProjetMediasListe({ projet }) {
   const medias = mediasProjet(projet)
 
@@ -36,7 +40,7 @@ function ProjetMediasListe({ projet }) {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-slate-900">{media.titre}</p>
               <p className="truncate text-xs text-slate-500">
-                {media.url ?? 'Fichier stocke — lien signe a venir du serveur'}
+                {media.url ?? 'Fichier stocke — sans adresse publique'}
               </p>
             </div>
 
