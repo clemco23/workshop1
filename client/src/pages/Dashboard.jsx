@@ -7,6 +7,7 @@ import Button from '../components/ui/Button.jsx'
 import ProgressBar from '../components/ui/ProgressBar.jsx'
 import Icon from '../components/ui/Icon.jsx'
 import EmptyState from '../components/ui/EmptyState.jsx'
+import DashboardCharts from '../components/dashboard/DashboardCharts.jsx'
 import { fetchDashboard } from '../api/dashboard.js'
 import { computeDashboard, heuresMission, toneSeuil } from '../lib/dashboard.js'
 import { DOCUMENT_CATEGORIE, MISSION_STATUT, MISSION_TYPE, enumMeta } from '../lib/enums.js'
@@ -26,7 +27,7 @@ export async function loader() {
 function Dashboard() {
   const data = useLoaderData()
   const { configSeuil } = data
-  const { seuil, ca, missions, repartition, documentsRecents } = computeDashboard(data)
+  const { seuil, ca, missions, repartition, graphiques, documentsRecents } = computeDashboard(data)
   const totalRepartition = repartition.reduce((acc, ligne) => acc + ligne.heures, 0)
 
   return (
@@ -76,6 +77,8 @@ function Dashboard() {
           hint={`${missions.proposees} proposee(s) — ${missions.aVenir} a venir`}
         />
       </div>
+
+      <DashboardCharts data={graphiques} />
 
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
         <Card
