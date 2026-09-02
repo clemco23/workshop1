@@ -5,13 +5,7 @@ import Button from '../components/ui/Button.jsx'
 import Icon from '../components/ui/Icon.jsx'
 import Input from '../components/ui/Input.jsx'
 import { requestCode } from '../api/auth.js'
-import {
-  LONGUEUR_NOM_MAX,
-  messageErreur,
-  normaliserEmail,
-  validerEmail,
-  validerNom,
-} from '../lib/authForm.js'
+import { messageErreur, normaliserEmail, validerEmail } from '../lib/authForm.js'
 
 // Creation de compte. Cote serveur c'est **le meme appel** que la connexion :
 // POST /api/auth/request-code cree l'utilisateur quand l'email est inconnu. Il
@@ -22,47 +16,33 @@ import {
 // qu'on attend et qu'on partage, et un nouveau venu a besoin qu'on lui dise ce
 // qui va se passer — pas du libelle « Connexion » qui suppose un compte deja la.
 //
-// Prenom et nom ne servent pas a l'authentification : ils remplissent
-// `users.first_name` / `last_name`, qui portent le nom affiche dans la Topbar et
-// l'auteur d'un portfolio public. Le serveur ne les applique qu'a la creation du
-// compte — une demande de code sur un compte existant ne renomme personne — donc
-// c'est bien ici, et nulle part ailleurs, qu'on peut les saisir aujourd'hui.
-const VIDE = { firstName: '', lastName: '', email: '' }
-
+// `users.first_name` / `last_name` ne sont pas demandes : le serveur les cree a
+// null et n'expose aucune route pour les renseigner, donc les saisir ici
+// reviendrait a les jeter. Ils devront venir d'une page de profil authentifiee,
+// avec la route qui va avec (voir client/CLAUDE.md).
 function Signup() {
   const navigate = useNavigate()
-  const [formulaire, setFormulaire] = useState(VIDE)
+  const [email, setEmail] = useState('')
   const [touche, setTouche] = useState(false)
   const [envoi, setEnvoi] = useState(false)
   const [erreurApi, setErreurApi] = useState(null)
 
-  const setChamp = (champ) => (valeur) =>
-    setFormulaire((etat) => ({ ...etat, [champ]: valeur }))
-
-  const erreurs = {
-    firstName: validerNom(formulaire.firstName, 'Prenom'),
-    lastName: validerNom(formulaire.lastName, 'Nom'),
-    email: validerEmail(formulaire.email),
-  }
-  const valide = Object.values(erreurs).every((erreur) => erreur == null)
-  // Les erreurs de saisie n'apparaissent qu'apres une tentative : rougir des
-  // champs que l'utilisateur n'a pas fini de remplir est du bruit.
-  const affichee = (champ) => (touche ? erreurs[champ] : null)
+  const erreurEmail = validerEmail(email)
+  // L'erreur de saisie ne s'affiche qu'apres une tentative : rougir un champ que
+  // l'utilisateur n'a pas fini de remplir est du bruit.
+  const erreurAffichee = touche ? erreurEmail : null
 
   async function envoyer(event) {
     event.preventDefault()
     setTouche(true)
-    if (!valide || envoi) return
+    if (erreurEmail || envoi) return
 
     setEnvoi(true)
     setErreurApi(null)
 
     try {
-      const adresse = normaliserEmail(formulaire.email)
-      const reponse = await requestCode(adresse, {
-        firstName: formulaire.firstName.trim(),
-        lastName: formulaire.lastName.trim(),
-      })
+      const adresse = normaliserEmail(email)
+      const reponse = await requestCode(adresse)
       // `nouveau` sert uniquement a la formulation de l'ecran suivant : le
       // serveur, lui, ne fait aucune difference entre les deux parcours.
       navigate('/verify-code', {
@@ -77,7 +57,7 @@ function Signup() {
   return (
     <AuthShell
       titre="Creer un compte"
-      description="Pas de mot de passe a choisir : on t'envoie un code a six chiffres pour confirmer que la boite est bien la tienne."
+      description="Une adresse email suffit. Pas de mot de passe a choisir : on t'envoie un code a six chiffres pour confirmer que la boite est bien la tienne."
       pied={
         <>
           Tu as deja un compte ?{' '}
@@ -88,42 +68,16 @@ function Signup() {
       }
     >
       <form onSubmit={envoyer} noValidate className="mt-8 grid gap-4">
-        {/* Prenom et nom sur une rangee : deux champs courts, et `min-w-0` est
-            deja porte par Input, donc la grille ne deborde pas. */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            label="Prenom"
-            value={formulaire.firstName}
-            onChange={setChamp('firstName')}
-            erreur={affichee('firstName')}
-            placeholder="Theo"
-            autoComplete="given-name"
-            maxLength={LONGUEUR_NOM_MAX}
-            autoFocus
-            disabled={envoi}
-          />
-
-          <Input
-            label="Nom"
-            value={formulaire.lastName}
-            onChange={setChamp('lastName')}
-            erreur={affichee('lastName')}
-            placeholder="Marchand"
-            autoComplete="family-name"
-            maxLength={LONGUEUR_NOM_MAX}
-            disabled={envoi}
-          />
-        </div>
-
         <Input
           label="Adresse email"
           type="email"
-          value={formulaire.email}
-          onChange={setChamp('email')}
-          erreur={affichee('email')}
+          value={email}
+          onChange={setEmail}
+          erreur={erreurAffichee}
           placeholder="toi@exemple.fr"
           hint="C'est aussi a cette adresse qu'arriveront tes codes de connexion."
           autoComplete="email"
+          autoFocus
           disabled={envoi}
         />
 

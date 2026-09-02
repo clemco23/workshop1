@@ -23,21 +23,6 @@ export function validerEmail(valeur) {
   return null
 }
 
-export const LONGUEUR_NOM_MAX = 80
-
-// Prenom et nom, demandes a l'inscription seulement. Aucune contrainte de forme
-// au-dela de la longueur : un nom peut contenir un espace, une apostrophe, un
-// tiret ou une lettre non latine, et filtrer la-dessus exclut de vraies
-// personnes. La borne reprend celle du serveur.
-export function validerNom(valeur, champ) {
-  const nom = valeur.trim()
-
-  if (nom === '') return `${champ} obligatoire.`
-  if (nom.length > LONGUEUR_NOM_MAX) return `${LONGUEUR_NOM_MAX} caracteres maximum.`
-
-  return null
-}
-
 export const LONGUEUR_CODE = 6
 
 // Le champ ne doit jamais contenir autre chose que des chiffres : on filtre a

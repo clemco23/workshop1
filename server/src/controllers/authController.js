@@ -1,30 +1,5 @@
 const { requestCode, verifyCode, getUserFromToken } = require('../services/authService');
 
-const LONGUEUR_NOM_MAX = 80;
-
-// Prenom et nom sont facultatifs : /login ne les envoie pas, seul le formulaire
-// d'inscription les remplit. Une chaine vide vaut absence, pas erreur.
-function nomOptionnel(valeur, champ) {
-  if (valeur === undefined || valeur === null) return null;
-
-  if (typeof valeur !== 'string') {
-    const error = new Error(`${champ} invalide`);
-    error.status = 400;
-    throw error;
-  }
-
-  const nom = valeur.trim();
-  if (nom === '') return null;
-
-  if (nom.length > LONGUEUR_NOM_MAX) {
-    const error = new Error(`${champ} : ${LONGUEUR_NOM_MAX} caractères maximum`);
-    error.status = 400;
-    throw error;
-  }
-
-  return nom;
-}
-
 async function requestCodeController(req, res) {
   try {
     const { email } = req.body;
@@ -33,10 +8,7 @@ async function requestCodeController(req, res) {
       return res.status(400).json({ message: 'Email invalide' });
     }
 
-    const firstName = nomOptionnel(req.body.firstName, 'Prénom');
-    const lastName = nomOptionnel(req.body.lastName, 'Nom');
-
-    const { user } = await requestCode(email, { firstName, lastName });
+    const { user } = await requestCode(email);
 
     return res.status(200).json({
       success: true,
@@ -44,11 +16,6 @@ async function requestCodeController(req, res) {
       email: user.email,
     });
   } catch (error) {
-    // Erreurs de validation levées par nomOptionnel().
-    if (error.status === 400) {
-      return res.status(400).json({ message: error.message });
-    }
-
     if (error.code === 'CONFIGURATION_GMAIL_MANQUANTE') {
       return res.status(503).json({ message: 'Service email non configuré' });
     }

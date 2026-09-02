@@ -20,13 +20,7 @@ function generateToken(user) {
   );
 }
 
-// `identite` ({ firstName, lastName }) vient du formulaire d'inscription et
-// n'est appliquee qu'a **la creation** du compte : cet appel est aussi celui de
-// la connexion, donc écraser les noms a chaque demande de code laisserait
-// n'importe qui renommer un compte existant en connaissant juste son email —
-// sans jamais avoir a lire le code. Renommer un compte deja cree passera par
-// une route de profil authentifiee.
-async function requestCode(email, identite = {}) {
+async function requestCode(email) {
   const normalizedEmail = email.trim().toLowerCase();
 
   let user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
@@ -35,8 +29,8 @@ async function requestCode(email, identite = {}) {
     user = await prisma.user.create({
       data: {
         email: normalizedEmail,
-        firstName: identite.firstName ?? null,
-        lastName: identite.lastName ?? null,
+        firstName: null,
+        lastName: null,
       },
     });
   }
