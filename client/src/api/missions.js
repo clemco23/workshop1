@@ -1,39 +1,39 @@
-import { api, USE_MOCKS, notFound } from './client.js'
-import { missions } from '../mocks/db.js'
+import { api } from './client.js'
 
-// Contrats attendus cote server :
-//   GET /api/missions?type=&statut=&mois=YYYY-MM&client=  -> Mission[]
-//   GET /api/missions/:id                                 -> Mission (+ documents, projets)
-// Les filtres sont appliques par le back en vrai ; le mock les reimplemente pour
-// que l'UI de filtrage soit developpable des maintenant.
-
-function memeMois(dateIso, mois) {
-  return dateIso.slice(0, 7) === mois
-}
+// Contrats cote server (voir ../../server/CLAUDE.md) :
+//   GET    /api/missions?type=&statut=&mois=YYYY-MM&client=  -> Mission[]
+//   POST   /api/missions                                     -> 201 Mission
+//   GET    /api/missions/:id                                 -> Mission (+ documents, projects)
+//   PATCH  /api/missions/:id                                 -> Mission (mise a jour partielle)
+//   DELETE /api/missions/:id                                 -> 204
+//
+// Le filtre `mois` porte sur `dateDebut` : une mission commencee le mois d'avant
+// et toujours en cours n'y apparait pas.
 
 export async function fetchMissions(filtres = {}) {
-  if (!USE_MOCKS) {
-    const { data } = await api.get('/api/missions', { params: filtres })
-    return data
-  }
-
-  const { type, statut, mois, client } = filtres
-
-  return missions
-    .filter((m) => !type || m.type === type)
-    .filter((m) => !statut || m.statut === statut)
-    .filter((m) => !mois || memeMois(m.dateDebut, mois))
-    .filter(
-      (m) => !client || m.clientProduction.toLowerCase().includes(client.toLowerCase()),
-    )
-    .sort((a, b) => new Date(b.dateDebut) - new Date(a.dateDebut))
+  const { data } = await api.get('/api/missions', { params: filtres })
+  return data
 }
 
 export async function fetchMission(id) {
-  if (!USE_MOCKS) {
-    const { data } = await api.get(`/api/missions/${id}`)
-    return data
-  }
+  const { data } = await api.get(`/api/missions/${id}`)
+  return data
+}
 
-  return missions.find((m) => m.id === id) ?? notFound('Mission')
+export async function createMission(payload) {
+  const { data } = await api.post('/api/missions', payload)
+  return data
+}
+
+// PATCH et non PUT : seuls les champs presents dans le corps sont valides et
+// ecrits. Envoyer le payload entier reste valable — c'est ce que fait le
+// formulaire, qui tient tous les champs.
+export async function updateMission(id, payload) {
+  const { data } = await api.patch(`/api/missions/${id}`, payload)
+  return data
+}
+
+// 204 sans corps : rien a renvoyer.
+export async function deleteMission(id) {
+  await api.delete(`/api/missions/${id}`)
 }

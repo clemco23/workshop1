@@ -47,11 +47,12 @@ client/
     index.css         # Tailwind + tokens du design system (@theme)
     api/              # instance axios + un module par ressource
     lib/              # cn, format, enums, session, erreurs, validation, dérivations métier
-    mocks/            # données simulées, à la forme du JSON de l'API
+    mocks/            # jeu de données de référence — plus importé par le code (voir Données & API)
     components/
-      ui/             # primitives réutilisables (Card, Button, Badge, Icon, Modal, …)
+      ui/             # primitives réutilisables (Card, Button, Badge, Icon, Modal,
+                      #   ConfirmDialog, RouteError, …)
       layout/         # AppLayout, Sidebar, Topbar, navItems.js
-      auth/           # AuthShell : coquille deux volets de /login, /signup, /verify-code
+      auth/           # AuthShell (coquille de /login, /signup, /verify-code) et ProtectedRoute
       missions/       # agenda, timeline, table, résumé, légende, modale de formulaire
       documents/      # table et formulaire de dépôt
       projets/        # carte, médias, modale de formulaire
@@ -101,7 +102,14 @@ Tout l'habillage passe par trois choses, à réutiliser au lieu de recréer du s
 `src/components/layout/AppLayout.jsx` est monté comme route parente (`element`) de
 toutes les routes authentifiées et rend `<Outlet />` — les pages ne rendent que leur
 contenu, jamais la nav. Sidebar fixe à partir de `md`, tiroir avec overlay en dessous ;
-la topbar est collante et affiche le titre de la section courante.
+la topbar est collante, affiche le titre de la section courante et le menu de compte
+(email + déconnexion).
+
+C'est `AppLayout` qui **réhydrate la session** : la copie de `localStorage` s'affiche
+tout de suite, un `GET /api/auth/me` la corrige ensuite. L'appel est ici et pas dans
+une page parce que la coquille est montée une seule fois pour toute la partie
+authentifiée — il ne se rejoue donc pas à chaque navigation. Si ce `me` répond 401, le
+jeton est mort : on renvoie à `/login` sans attendre la navigation suivante.
 
 La navigation est déclarée une seule fois dans `layout/navItems.js`
 (`navItems`, `navItemsSecondary`, `currentNavTitle`) : ajouter une entrée d'onglet
@@ -125,48 +133,62 @@ réellement exposés sont listés dans `../server/CLAUDE.md`. Le client s'y cale
   de mettre ce fichier à jour ; `enumMeta()` évite le crash en affichant la valeur
   brute si le client est en retard.
 - **Appels** : `src/api/client.js` expose l'instance axios (`baseURL: VITE_API_URL`,
-  défaut `http://localhost:4000`), le drapeau `USE_MOCKS` et `notFound()`. Un module par
-  ressource dans `src/api/`, qui renvoie le mock ou tape l'API selon ce drapeau — les
-  pages ne connaissent ni axios ni les mocks.
+  défaut `http://localhost:4000`) et ses deux intercepteurs. Un module par ressource
+  dans `src/api/`, qui **tape toujours l'API** — les pages ne connaissent pas axios.
 
-  | Module            | Fonctions                                                              |
-  | ----------------- | ---------------------------------------------------------------------- |
-  | `auth.js`         | `requestCode(email)`, `verifyCode(email, code)`                        |
-  | `dashboard.js`    | `fetchDashboard()`                                                     |
-  | `missions.js`     | `fetchMissions(filtres)`, `fetchMission(id)`                           |
-  | `documents.js`    | `fetchDocuments(filtres)`, `createDocument({ fichier, categorie, missionId })` |
-  | `projets.js`      | `fetchProjets(filtres)`, `fetchProjet(id)` — filtres : `tag`, `missionId` |
-  | `portfolios.js`   | `fetchPortfolios()`, `fetchPortfolio(id)`, `fetchPortfolioPublic(slug)` |
-  | `compte.js`       | `fetchProfil()`, `fetchConfigSeuil()`                                  |
+  | Module            | Fonctions                                                                    |
+  | ----------------- | ---------------------------------------------------------------------------- |
+  | `auth.js`         | `requestCode(email)`, `verifyCode(email, code)`, `fetchMe()`                 |
+  | `dashboard.js`    | `fetchDashboard()`                                                           |
+  | `missions.js`     | `fetchMissions(filtres)`, `fetchMission(id)`, `createMission`, `updateMission`, `deleteMission` |
+  | `documents.js`    | `fetchDocuments(filtres)`, `createDocument({ fichier, categorie, missionId })`, `documentUrl(id)`, `deleteDocument` |
+  | `projets.js`      | `fetchProjets(filtres)`, `fetchProjet(id)`, `createProjet`, `updateProjet`, `deleteProjet` |
+  | `portfolios.js`   | `fetchPortfolios()`, `fetchPortfolio(id)`, `createPortfolio`, `updatePortfolio`, `updatePortfolioProjets(id, projectIds)`, `deletePortfolio`, `fetchPortfolioPublic(slug)` |
+  | `compte.js`       | `fetchProfil()` (délègue à `/api/auth/me`), `fetchConfigSeuil()`, `updateConfigSeuil(champs)` |
 
-  Les filtres (`type`, `statut`, `mois`, `client`, `categorie`, `tag`) sont
-  réimplémentés dans les mocks, donc les UI de filtrage sont développables avant
-  le back.
-- **Mocks** : `src/mocks/db.js` est un **jeu de données unique** qui tient le rôle
-  de la base pour un utilisateur (`user`, `configSeuil`, `missions`, `documents`,
-  `projets`, `portfolios`, `portfolioProjets`). Chaque module d'`api/` en fait une
-  *vue* — jamais une copie — pour qu'une même mission soit identique vue du
-  dashboard, de la liste ou d'un document lié ; `mocks/dashboard.js` n'est qu'une
-  projection de `db.js`. Ajouter des données se fait donc dans `db.js`, pas dans un
-  mock de page. Les dates y sont **relatives au mois courant** pour que la démo ne se
-  périme pas, et le jeu couvre volontairement toutes les valeurs d'enum et tous les
-  champs nullables (mission sans `heures`, sans `date_fin`, sans `montant_ht`, document
-  sans `mission_id`, projet perso sans mission), ainsi qu'une mission hors fenêtre
-  glissante.
+  Les filtres (`type`, `statut`, `mois`, `client`, `categorie`, `tag`, `missionId`)
+  sont appliqués par le serveur. En pratique les pages de liste chargent tout puis
+  filtrent en mémoire — c'est instantané et ça ne redemande rien ; passer aux filtres
+  côté API le jour où le volume l'exige.
 
-  Les mocks acceptent aussi une **écriture** : `ajouterDocument()` pousse dans le tableau
-  lu par `api/documents.js` — pas dans une copie — pour qu'un dépôt apparaisse vraiment
-  dans la liste après revalidation de la route. Rien n'est persisté : un rechargement
-  remet le jeu d'origine. Toute nouvelle mutation simulée suit cette forme.
+  Deux points de forme à respecter :
+
+  - **Le corps d'une réponse est la ressource elle-même**, pas une enveloppe. Seules
+    `/api/health` et `/api/auth/*` portent encore un booléen `success` — d'où le
+    `data.user` de `fetchMe()`. Ne pas étendre cette forme.
+  - **Les mutations renvoient la ressource écrite**, mais les pages ne s'en servent
+    presque jamais : elles appellent `revalidator.revalidate()` (react-router) pour
+    relancer le `loader` de la route. Une seule source de vérité, et les champs
+    dérivés du serveur (`ordre`, `updatedAt`, `projetsDisponibles`) restent justes.
+    Une suppression qui vide la page courante navigue vers la liste en `replace`.
+- **Mocks (hors circuit)** : `src/mocks/db.js` et `mocks/dashboard.js` sont conservés
+  comme **jeu de données de référence** — la forme exacte du JSON de l'API pour un
+  utilisateur — mais **plus aucun module ne les importe** : le drapeau `USE_MOCKS` a
+  disparu, tout passe par le réseau. Ils ne sont donc plus dans le bundle, et rien ne
+  garantit qu'ils suivent le schéma. Les remettre en circuit demanderait un vrai
+  serveur de simulation (MSW) plutôt qu'un `if` dans chaque module.
 - **Dérivations** : les agrégats sont calculés côté client par des fonctions pures
   (`src/lib/dashboard.js`, `src/lib/documents.js`, `src/lib/missions.js`), à partir des
   lignes brutes. L'endpoint n'a donc qu'à renvoyer les lignes, pas des totaux — et la
   logique reste testable sans réseau.
 - **Formulaires** : un fichier de validation par formulaire, en fonctions pures
   (`src/lib/missionForm.js`, `projetForm.js`, `portfolioForm.js`, `parametres.js`) :
-  valeurs par défaut, contrôles alignés sur les bornes du schéma (`Decimal(6,2)`, etc.)
-  et mise en forme vers le contrat de l'API. Ce sont des garde-fous d'ergonomie, **pas**
-  une garantie : le serveur revalide tout de son côté.
+  `versFormulaire()` (ressource → chaînes de saisie), `estModifie()`, `validerX()` et
+  `versPayload()` (saisie → corps de l'API). Contrôles alignés sur les bornes du schéma
+  (`Decimal(6,2)`, etc.). Ce sont des garde-fous d'ergonomie, **pas** une garantie : le
+  serveur revalide tout, et c'est son message qui s'affiche en cas de refus.
+
+  Les modales de création et d'édition sont **le même composant** (`MissionFormModal`,
+  `ProjetFormModal`) : passer la ressource en prop bascule en édition. Les règles de
+  saisie ne peuvent donc pas diverger entre les deux. Elles portent l'appel elles-mêmes
+  et remontent le résultat par `onEnregistre`, sans connaître le routeur. Le pied du
+  `<dialog>` étant hors du `<form>`, le bouton d'envoi est relié par `form={idFormulaire}`
+  (`useId()`).
+
+  ⚠️ **Le slug d'un portfolio ne se saisit pas** : le serveur le dérive du titre, y
+  ajoute quatre octets aléatoires, puis le fige — un lien déjà partagé ne doit pas
+  casser. `portfolioForm.js` n'expose donc qu'un `slugifier()` d'**aperçu**, et
+  `PATCH /api/portfolios/:id` n'accepte que `titrePage` et `actif`.
 - **Erreurs d'API** : `messageErreur(error, cas)` (`src/lib/erreurs.js`) traduit une
   erreur axios en phrase affichable — un cas formulé par l'appelant, sinon le `message`
   renvoyé par l'API, sinon un repli générique. Le statut brut n'est jamais montré.
@@ -286,6 +308,30 @@ Garder cette forme pour toute nouvelle route.
 Les routes à paramètre sont des enfants de leur liste (`missions` → `:id`) pour qu'un
 futur layout parent ne soit pas remonté à chaque navigation.
 
+### Emboîtement des routes authentifiées
+
+Trois niveaux, chacun pour une raison précise — ne pas les aplatir :
+
+```
+<ProtectedRoute />          garde : pas de jeton → redirection vers /login
+  └── <AppLayout />         coquille : sidebar + topbar, montée une seule fois
+        └── ErrorBoundary   route SANS chemin, qui ne porte que RouteError
+              └── les pages
+```
+
+L'`ErrorBoundary` est sur une route **sans chemin sous** la coquille, et pas sur la
+coquille elle-même : un `errorElement` remplace l'élément de sa propre route, donc le
+poser sur `AppLayout` ferait disparaître la navigation en même temps que le contenu.
+Ici l'erreur s'affiche dans l'`Outlet`, sidebar et topbar intactes.
+
+`components/ui/RouteError.jsx` trie les trois façons dont un `loader` échoue :
+session expirée (`error.sessionExpiree`, posé par l'intercepteur) → `/login` ;
+404 → carte « introuvable » ; le reste → `messageErreur()` et un bouton *Réessayer*.
+
+`/portfolio/:slug` reste **en dehors** des trois niveaux et exporte son propre
+`ErrorBoundary` : c'est la seule page vue par quelqu'un sans compte, elle ne doit
+montrer ni la coquille de l'app, ni un lien vers l'espace privé.
+
 ## Authentification
 
 Le back **n'utilise pas Supabase Auth** : la connexion est un code à usage unique envoyé
@@ -314,12 +360,23 @@ Points de conception à ne pas défaire :
   en navigation privée).
 - **L'intercepteur relit le jeton à chaque requête** plutôt que de le capturer au
   démarrage, pour qu'une connexion ou une déconnexion prenne effet immédiatement.
+- **Un 401 est traité une seule fois, dans l'intercepteur de réponse** : il efface la
+  session (elle ne vaut plus rien) et marque l'erreur `sessionExpiree`, que `RouteError`
+  et `AppLayout` savent lire. `request-code` et `verify-code` en sont exclues — un code
+  invalide n'est pas une session expirée, et il n'y a rien à effacer. `/api/auth/me`,
+  lui, n'est pas exclu : c'est justement là que la péremption se détecte.
+- **La garde ne vérifie que la *présence* du jeton**, jamais sa validité : seul le
+  serveur peut en juger, et il le fait à chaque appel. Un jeton périmé passe donc la
+  garde, échoue sur le premier appel, et le chemin ci-dessus prend le relais. C'est ce
+  qui évite un appel de vérification à chaque navigation.
+- **La page demandée survit à la redirection** : la garde dépose `state.depuis`, `/login`
+  le relaie à `/verify-code`, qui y renvoie après l'échange du code.
+- **La déconnexion est purement locale** (`Topbar`) : le JWT n'est pas révocable côté
+  serveur, il n'y a donc pas d'endpoint à appeler. Effacer la session suffit —
+  l'intercepteur cesse aussitôt de poser l'en-tête.
 - Les trois écrans partagent `components/auth/AuthShell.jsx` : volet de présentation à
   gauche (masqué sous `lg`), formulaire à droite. Le lockup de marque y est le même que
   dans la `Sidebar` — un seul repère visuel pour toute l'app.
-- **En mode mock**, `api/auth.js` ne touche pas le réseau : n'importe quelle adresse est
-  acceptée et le code à saisir est `CODE_MOCK` (`src/mocks/db.js`, `'000000'`), annoncé
-  dans le bandeau de `/verify-code`. Le faux jeton est stocké comme un vrai.
 
 Il n'y a **pas** de `@supabase/supabase-js` à installer côté client : le client ne parle
 qu'à l'API Express.
@@ -333,8 +390,10 @@ Fichiers : `.env` (local, ignoré par git) et `.env.example` (versionné, à ten
 - **Aucun secret** dans ces fichiers : tout finit dans le bundle public. En particulier,
   la clé Supabase du serveur (`SUPABASE_SECRET_KEY`) ne doit **jamais** être recopiée ici.
 - `VITE_API_URL` pointe vers l'API Express (par défaut `http://localhost:4000`).
-- `VITE_USE_MOCKS` — `'false'` pour taper la vraie API, toute autre valeur (ou absente)
-  laisse les mocks actifs.
+  C'est la seule variable du client — `VITE_USE_MOCKS` a disparu avec le retrait des
+  mocks du circuit (voir Données & API). L'app ne fonctionne donc **qu'avec le serveur
+  démarré** : `npm run dev` dans `../server`, et une base joignable
+  (`curl localhost:4000/api/health`).
 
 Ajouter une variable = l'ajouter aussi dans `.env.example` avec une valeur d'exemple.
 
@@ -350,49 +409,38 @@ Ajouter une variable = l'ajouter aussi dans `.env.example` avec une valeur d'exe
 
 ## État actuel — pas encore fait
 
-Sont câblés de bout en bout : l'**authentification** (`/login`, `/signup`,
-`/verify-code`, jeton posé par l'intercepteur) et le **dépôt d'un justificatif** sur
-`/documents`. Tout le reste de l'app est encore en **lecture seule**. Les écarts, par
-ordre de blocage :
+L'app est branchée de bout en bout sur l'API : authentification, garde de routes,
+lectures, **toutes les mutations** (missions, projets, portfolios, seuils, documents) et
+les suppressions avec confirmation. Ce qui reste :
 
-- **Deux restes de désalignement**, sans conséquence aujourd'hui : `fetchProfil()`
-  (`compte.js`) vise `/api/profil`, qui n'existe pas — mais la fonction n'a **aucun
-  appelant**, c'est du code mort à supprimer ou à rebrancher sur `GET /api/auth/me`. Et
-  les commentaires de contrat de `portfolios.js` parlent encore de
-  `PUT /api/portfolios/:id/projets` : c'est `/projects` côté serveur.
-- **Aucun intercepteur de réponse** : un 401 (jeton expiré au bout de sept jours) remonte
-  en erreur axios depuis un `loader`, donc sur l'écran de dev de react-router, sans
-  redirection vers `/login`. À écrire avec `ProtectedRoute`.
-- **Pas de réhydratation de session** : `/api/auth/me` n'est jamais appelé et
-  `lireUtilisateur()` jamais utilisé, donc au rechargement le jeton repart bien mais rien
-  ne réaffiche l'utilisateur.
-- **Les mutations restent à brancher**, alors que le serveur les expose toutes. Les
-  modales (`MissionFormModal`, `ProjetFormModal`, `PortfolioFormModal`) valident la
-  saisie mais ne postent rien, et les boutons restent `disabled` avec une infobulle
-  « à venir » qui **n'est plus vraie** :
-
-  | Interface                                   | Endpoint disponible                     |
-  | ------------------------------------------- | --------------------------------------- |
-  | créer / éditer une mission                  | `POST`, `PATCH /api/missions/:id`        |
-  | créer un projet, éditer depuis `ProjetDetail` | `POST`, `PATCH /api/projects/:id`      |
-  | créer un portfolio, activer/désactiver      | `POST`, `PATCH /api/portfolios/:id`      |
-  | ajouter/retirer/réordonner ses projets      | `PUT /api/portfolios/:id/projects`       |
-  | enregistrer les seuils                      | `PUT /api/parametres`                    |
-  | télécharger un document (`DocumentsTable`)  | `GET /api/documents/:id/url` (lien signé) |
-  | supprimer quoi que ce soit                  | `DELETE` sur missions, projets, portfolios, documents — **aucune UI n'existe encore** |
-
-- **Aucune garde d'authentification** : toutes les routes sont accessibles sans session,
-  rien n'oblige à passer par `/login`. Quand `ProtectedRoute` arrivera,
-  `/portfolio/:slug` doit rester en dehors — c'est la seule route publique.
-- **Aucune déconnexion** : `effacerSession()` existe (`src/lib/session.js`) mais n'est
-  appelée nulle part, et la `Topbar` affiche toujours un nom et un avatar **en dur**.
-- **Plus aucun `errorElement`** : `PortfolioPublic` n'exporte plus d'`ErrorBoundary`
-  depuis sa réécriture, donc un slug inconnu montre l'écran de dev de react-router à un
-  visiteur sans compte. À remettre là, puis à généraliser aux routes authentifiées avec
-  la garde d'auth (le `loader` pourra échouer sur un 401).
-- Pas de page **compte / profil**, pas d'entrée de nav : `fetchProfil()` (`api/compte.js`)
-  n'est appelée nulle part. `users.first_name` / `last_name` restent à `null` — aucun
-  écran ne permet de les saisir, et aucune route serveur de les écrire.
+- **Aucun fichier depuis le formulaire de projet.** Le serveur accepte un
+  `multipart/form-data` (champ `file`, 50 Mo) sur `POST` et `PATCH /api/projects` et
+  range l'URL publique dans `link` ; `ProjetFormModal` ne saisit qu'un `link` et envoie
+  du JSON. Une réalisation dont le média est un fichier local doit donc être uploadée
+  autrement. Le point d'entrée est unique : `versPayload()` + l'appel dans
+  `ProjetFormModal` — à basculer en `FormData` comme `api/documents.js` le fait déjà.
+- **Pas d'édition d'un document déposé** : `PATCH /api/documents/:id` existe (il
+  remplace même le fichier), mais aucune UI ne le déclenche — on ne peut que déposer,
+  télécharger ou supprimer. Changer la catégorie d'un justificatif oblige à le
+  redéposer.
+- **`window.open()` après un `await`** dans le téléchargement d'un document
+  (`DocumentsTable`) : le lien signé est demandé au clic, donc l'ouverture est
+  asynchrone. Les navigateurs l'autorisent tant que le délai reste court, mais un
+  bloqueur strict peut la refuser sans que rien ne s'affiche. À revoir si le cas
+  remonte (ouvrir l'onglet d'abord, y naviguer ensuite).
+- **Aucun `onDelete` en cascade côté écran** : supprimer une mission laisse ses
+  documents et fiches projet en place, `mission_id` passant à `null` (`SetNull` dans le
+  schéma). C'est le comportement voulu, et la boîte de confirmation le dit — mais aucune
+  vue ne liste ensuite ces orphelins autrement que par le filtre « sans mission liée ».
+- Pas de page **compte / profil**, pas d'entrée de nav : `fetchProfil()`
+  (`api/compte.js`) n'est appelée nulle part hors de la réhydratation.
+  `users.first_name` / `last_name` restent à `null` — aucun écran ne permet de les
+  saisir, et **aucune route serveur de les écrire**. La `Topbar` retombe donc sur la
+  partie locale de l'email.
+- **Pas de tests, et plus de mocks en circuit** : le retrait de `USE_MOCKS` rend l'app
+  dépendante d'un serveur démarré, y compris pour développer un écran. Si ça devient
+  gênant, la bonne réponse est MSW (un vrai serveur de simulation, qui intercepte au
+  niveau réseau) — pas de réintroduire un `if` dans chaque module d'`api/`.
 - **Médias d'une fiche projet** : le schéma stocke **un seul** média par fiche —
   `projet.type` (enum `ProjectType` : `IMAGE` / `PDF` / `VIDEO` / `LINK`) et `projet.link`
   (une URL publique de Supabase Storage quand c'est un fichier). Une réalisation peut
@@ -406,6 +454,3 @@ ordre de blocage :
 - Le formulaire de dépôt n'accepte **qu'un fichier à la fois** : la catégorie et la
   mission valent pour lui. Un dépôt multiple demanderait une ligne de réglages par
   fichier, pas une boucle sur le même formulaire.
-- Petit défaut connu : dans `fetchPortfolioPublic`, un slug introuvable **en mode mock**
-  ne s'arrête pas — l'exécution retombe sur l'appel réseau. À refermer par un
-  `notFound('Portfolio')` explicite.

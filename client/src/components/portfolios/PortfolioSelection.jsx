@@ -5,11 +5,18 @@ import { PROJET_TAG, enumMeta } from '../../lib/enums.js'
 import { formatDate } from '../../lib/format.js'
 import { mediasProjet } from '../../lib/medias.js'
 
-// Projets retenus sur la page, dans l'ordre de la table de jonction
-// (`portfolio_public_projet.ordre`). Monter / descendre / retirer sont dessines
-// mais inactifs : PUT /api/portfolios/:id/projets n'est pas ecrit, et un
-// reordonnancement qui ne survit pas au rechargement serait un piege.
-function PortfolioSelection({ projets }) {
+// Projets retenus sur la page, dans l'ordre ou ils y paraitront.
+//
+// Composant controle : il ne tient aucun etat, la page detient la liste et
+// applique monter / descendre / retirer. C'est ce qui permet d'enchainer
+// plusieurs reordonnancements avant un seul `PUT /:id/projects` — l'endpoint
+// remplace la selection entiere, envoyer un appel par fleche serait a la fois
+// bavard et faux si l'un d'eux echouait.
+//
+// La position affichee est l'index de la liste, pas le champ `ordre` renvoye par
+// le serveur : tant que la selection n'est pas enregistree, c'est l'ordre a
+// l'ecran qui fait foi.
+function PortfolioSelection({ projets, onMonter, onDescendre, onRetirer }) {
   if (projets.length === 0) {
     return (
       <EmptyState
@@ -20,6 +27,9 @@ function PortfolioSelection({ projets }) {
     )
   }
 
+  const bouton =
+    'rounded p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:pointer-events-none disabled:opacity-30'
+
   return (
     <ol className="divide-y divide-slate-100">
       {projets.map((projet, index) => {
@@ -27,9 +37,8 @@ function PortfolioSelection({ projets }) {
 
         return (
           <li key={projet.id} className="flex min-w-0 items-center gap-3 py-3 first:pt-0 last:pb-0">
-            {/* La position affichee est celle du contrat, pas l'index de rendu. */}
             <span className="w-6 shrink-0 text-center text-xs font-medium text-slate-400 tabular-nums">
-              {projet.ordre}
+              {index + 1}
             </span>
 
             <div className="min-w-0 flex-1">
@@ -46,34 +55,35 @@ function PortfolioSelection({ projets }) {
             <div className="flex shrink-0 items-center">
               <button
                 type="button"
-                disabled
-                title="Reordonnancement a venir"
-                className="rounded p-1 text-slate-300 disabled:pointer-events-none"
+                onClick={() => onMonter(index)}
+                disabled={index === 0}
+                title="Monter"
+                className={bouton}
               >
                 <Icon name="chevronUp" className="size-4" />
                 <span className="sr-only">Monter {projet.titre}</span>
               </button>
               <button
                 type="button"
-                disabled
-                title="Reordonnancement a venir"
-                className="rounded p-1 text-slate-300 disabled:pointer-events-none"
+                onClick={() => onDescendre(index)}
+                disabled={index === projets.length - 1}
+                title="Descendre"
+                className={bouton}
               >
                 <Icon name="chevronDown" className="size-4" />
                 <span className="sr-only">Descendre {projet.titre}</span>
               </button>
               <button
                 type="button"
-                disabled
-                title="Retrait a venir"
-                className="rounded p-1 text-slate-300 disabled:pointer-events-none"
+                onClick={() => onRetirer(projet.id)}
+                title="Retirer de la page"
+                className="rounded p-1 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
               >
                 <Icon name="close" className="size-4" />
                 <span className="sr-only">Retirer {projet.titre} de la page</span>
               </button>
             </div>
 
-            {/* index sert uniquement au marquage du premier/dernier, pas a l'ordre. */}
             <span className="sr-only">
               Position {index + 1} sur {projets.length}
             </span>

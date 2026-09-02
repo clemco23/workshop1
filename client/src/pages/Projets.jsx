@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useLoaderData } from 'react-router-dom'
+import { useLoaderData, useRevalidator } from 'react-router-dom'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Card from '../components/ui/Card.jsx'
 import Button from '../components/ui/Button.jsx'
@@ -28,6 +28,7 @@ const onglets = [
 
 function Projets() {
   const { projets, missions } = useLoaderData()
+  const revalidator = useRevalidator()
   const [tag, setTag] = useState('')
   const [creation, setCreation] = useState(false)
 
@@ -48,10 +49,13 @@ function Projets() {
         </Button>
       </PageHeader>
 
+      {/* Apres une creation, on relance le loader plutot que de pousser la fiche
+          dans la liste en memoire : une seule source de verite. */}
       <ProjetFormModal
         ouvert={creation}
         onClose={() => setCreation(false)}
         missions={missions}
+        onEnregistre={() => revalidator.revalidate()}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

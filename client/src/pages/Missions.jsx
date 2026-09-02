@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useLoaderData } from 'react-router-dom'
+import { useLoaderData, useRevalidator } from 'react-router-dom'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Card from '../components/ui/Card.jsx'
 import Button from '../components/ui/Button.jsx'
@@ -41,6 +41,7 @@ const vues = [
 
 function Missions() {
   const { missions, configSeuil } = useLoaderData()
+  const revalidator = useRevalidator()
   const [vue, setVue] = useState('liste')
   const [creation, setCreation] = useState(false)
   const [filtres, setFiltres] = useState({ type: '', statut: '', client: '' })
@@ -107,10 +108,13 @@ function Missions() {
         <Tabs options={vues} value={vue} onChange={setVue} ariaLabel="Vue des missions" />
       </div>
 
+      {/* Apres une creation, on relance le loader de la route plutot que de
+          pousser la mission dans la liste en memoire : une seule source de verite. */}
       <MissionFormModal
         ouvert={creation}
         onClose={() => setCreation(false)}
         heuresJourDefaut={configSeuil.heuresJourDefaut}
+        onEnregistre={() => revalidator.revalidate()}
       />
 
       <MissionsResume totaux={totaux} />

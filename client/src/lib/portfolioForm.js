@@ -1,62 +1,57 @@
-// Formulaire de page publique : valeurs par defaut, slug et validation.
+// Formulaire de page publique : valeurs par defaut et validation.
 // Fonctions pures, memes conventions que missionForm.js / projetForm.js.
 //
-// Champs du schema : `slug` (unique sur tout le site), `titre_page` (nullable),
-// `actif` (defaut true). La selection des projets se fait ensuite sur la fiche
-// de la page, via la table de jonction — pas ici.
+// Champs du schema : `slug` (unique sur tout le site), `titre_page`, `actif`
+// (defaut true). Le **slug n'est pas saisi** : le serveur le derive du titre
+// (`slugify(titrePage)` + 4 octets aleatoires) puis le fige — un lien deja
+// partage ne doit pas casser. Il n'y a donc rien a valider ni a envoyer pour
+// lui, et pas de collision a anticiper cote client.
+//
+// La selection des projets se fait ensuite sur la fiche de la page, via la
+// table de jonction — pas ici : une page se cree vide.
 
 export const PORTFOLIO_VIDE = {
   titrePage: '',
-  slug: '',
   actif: true,
 }
 
-// Le slug est dans l'URL publique : minuscules, chiffres et tirets seulement.
-// Les accents sont deposes (NFD puis retrait des diacritiques) plutot que
-// remplaces par des tirets, pour que « Théâtre » donne « theatre » et pas « th-tre ».
-export function slugifier(valeur) {
-  return valeur
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
-
-const FORME_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
-
-export function validerPortfolio(formulaire, slugsExistants = []) {
-  const slug = formulaire.slug.trim()
+// Le titre est obligatoire cote serveur (`Titre du portfolio requis`) : c'est
+// lui qui fabrique l'adresse.
+export function validerPortfolio(formulaire) {
+  const titre = formulaire.titrePage.trim()
 
   const erreurs = {
-    slug:
-      slug === ''
-        ? 'Adresse obligatoire.'
-        : !FORME_SLUG.test(slug)
-          ? 'Minuscules, chiffres et tirets seulement.'
-          : slug.length < 3
-            ? 'Trois caracteres minimum.'
-            : slug.length > 60
-              ? 'Soixante caracteres maximum.'
-              : // Le serveur reste seul juge (contrainte @unique), mais autant le
-                // dire tout de suite quand la collision est visible cote client.
-                slugsExistants.includes(slug)
-                ? 'Cette adresse est deja prise.'
-                : null,
-    titrePage: formulaire.titrePage.length > 120 ? 'Cent-vingt caracteres maximum.' : null,
+    titrePage:
+      titre === ''
+        ? 'Titre obligatoire — il sert a fabriquer l’adresse publique.'
+        : titre.length > 120
+          ? 'Cent-vingt caracteres maximum.'
+          : null,
   }
 
   return { erreurs, valide: Object.values(erreurs).every((e) => e == null) }
 }
 
-// Corps attendu par POST /api/portfolios. `titre_page` vide = null : la page
-// publique retombe alors sur le slug.
-export function versPayload(formulaire) {
-  const titre = formulaire.titrePage.trim()
+// Apercu de l'adresse que le serveur produira, a titre indicatif : il y ajoute
+// un suffixe aleatoire, l'adresse finale n'est donc connue qu'apres la creation.
+export function slugifier(valeur) {
+  return (
+    valeur
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60) || 'portfolio'
+  )
+}
 
+// Corps attendu par POST /api/portfolios. `projectIds` est envoye vide : la page
+// se remplit ensuite depuis sa fiche.
+export function versPayload(formulaire) {
   return {
-    slug: formulaire.slug.trim(),
-    titrePage: titre === '' ? null : titre,
+    titrePage: formulaire.titrePage.trim(),
     actif: formulaire.actif,
+    projectIds: [],
   }
 }

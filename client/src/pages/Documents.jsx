@@ -158,7 +158,7 @@ function Documents() {
                   : 'Tous les justificatifs, du plus recent au plus ancien'
               }
             >
-              <DocumentsTable documents={affiches} />
+              <DocumentsTable documents={affiches} onSupprime={() => revalidator.revalidate()} />
             </Card>
           )}
         </div>

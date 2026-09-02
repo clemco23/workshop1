@@ -48,3 +48,15 @@ export function effacerSession() {
     // Rien a faire : sans stockage, il n'y avait rien a effacer.
   }
 }
+
+// Rafraichissement du seul utilisateur, sans toucher au jeton : sert a la
+// rehydratation au chargement, ou /api/auth/me fait foi sur ce que la copie
+// locale contient.
+export function enregistrerUtilisateur(user) {
+  try {
+    localStorage.setItem(CLE_UTILISATEUR, JSON.stringify(user))
+  } catch {
+    // Stockage indisponible : la copie locale ne sera pas mise a jour, la
+    // session en cours reste valable.
+  }
+}

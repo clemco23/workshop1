@@ -24,6 +24,9 @@ function VerifyCode() {
   const email = state?.email ?? null
   // Depose par /signup : seule la formulation change, l'appel est le meme.
   const nouveau = state?.nouveau === true
+  // Relaye depuis /login, qui le tient de la garde d'authentification : la page
+  // que l'utilisateur demandait avant d'etre renvoye ici.
+  const depuis = state?.depuis
 
   const [code, setCode] = useState('')
   const [touche, setTouche] = useState(false)
@@ -62,7 +65,7 @@ function VerifyCode() {
       enregistrerSession(session)
       // `replace` : une fois connecte, le retour arriere ne doit pas ramener sur
       // un ecran de code deja consomme (le serveur marque le code `usedAt`).
-      navigate('/', { replace: true })
+      navigate(depuis ?? '/', { replace: true })
     } catch (error) {
       setErreurApi(messageErreur(error))
       setCode('')

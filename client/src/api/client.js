@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { lireJeton } from '../lib/session.js'
+import { effacerSession, lireJeton } from '../lib/session.js'
 
 // Instance axios unique : jamais d'URL absolue codee en dur dans les pages.
 export const api = axios.create({
@@ -19,15 +19,28 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Tant que le back n'expose que /api/health, les appels passent par les mocks.
-// Mettre VITE_USE_MOCKS=false dans .env pour taper la vraie API.
-export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS !== 'false'
+// Le jeton vaut sept jours cote serveur : il expire donc en cours d'usage, et
+// l'utilisateur voit alors un 401 sur une route quelconque. Reponse unique ici
+// plutot que dans chaque appelant : on efface la session (elle ne vaut plus
+// rien) et on marque l'erreur, que `RouteError` et les formulaires savent lire.
+//
+// Les deux routes de connexion sont exclues : un code invalide n'est pas une
+// session expiree, et il n'y a alors rien a effacer. /api/auth/me, lui, en est
+// bien une — c'est meme la ou la reconnexion se detecte au chargement.
+const ROUTES_CONNEXION = ['/api/auth/request-code', '/api/auth/verify-code']
 
-// Ressource absente cote mock. Un `throw` de Response est ce que le data router
-// attend dans un loader : il rend l'errorElement de la route au lieu de laisser
-// la page se demerder avec un `undefined` (l'API, elle, repondra un vrai 404).
-export function notFound(quoi = 'Ressource') {
-  throw new Response(`${quoi} introuvable`, { status: 404 })
-}
+api.interceptors.response.use(
+  (reponse) => reponse,
+  (error) => {
+    const connexion = ROUTES_CONNEXION.includes(error.config?.url)
+
+    if (error.response?.status === 401 && !connexion) {
+      effacerSession()
+      error.sessionExpiree = true
+    }
+
+    return Promise.reject(error)
+  },
+)
 
 export default api
