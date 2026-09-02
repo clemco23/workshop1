@@ -28,7 +28,7 @@ export function Marque({ sombre = false }) {
           sombre ? 'bg-white text-brand-700' : 'bg-brand-600 text-white',
         )}
       >
-        W
+        E
       </span>
       <span
         className={cn(
@@ -36,7 +36,7 @@ export function Marque({ sombre = false }) {
           sombre ? 'text-white' : 'text-slate-900',
         )}
       >
-        wks1
+        Editly
       </span>
     </div>
   )
