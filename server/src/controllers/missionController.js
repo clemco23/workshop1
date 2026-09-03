@@ -15,6 +15,50 @@ function parseDate(value, fieldName) {
   return date;
 }
 
+// Jour de la semaine au format getUTCDay() : 0 = dimanche ... 6 = samedi.
+function parseJoursOff(value, fieldName) {
+  if (value === null || value === undefined) return [];
+
+  if (!Array.isArray(value)) {
+    const error = new Error(`${fieldName} invalide`);
+    error.status = 400;
+    throw error;
+  }
+
+  const jours = value.map((jour) => {
+    const number = Number(jour);
+    if (!Number.isInteger(number) || number < 0 || number > 6) {
+      const error = new Error(`${fieldName} invalide`);
+      error.status = 400;
+      throw error;
+    }
+    return number;
+  });
+
+  // Dedoublonne et ordonne : le stockage ne doit pas dependre de l'ordre des
+  // clics dans le formulaire, sinon deux masques identiques se comparent mal.
+  return [...new Set(jours)].sort((a, b) => a - b);
+}
+
+// Les exceptions ponctuelles sont ramenees a minuit UTC : ce sont des jours, pas
+// des instants, et c'est par leur cle 'AAAA-MM-JJ' qu'elles sont comparees.
+function parseJours(value, fieldName) {
+  if (value === null || value === undefined) return [];
+
+  if (!Array.isArray(value)) {
+    const error = new Error(`${fieldName} invalide`);
+    error.status = 400;
+    throw error;
+  }
+
+  const cles = value.map((jour) => {
+    const date = parseDate(jour, fieldName);
+    return date.toISOString().slice(0, 10);
+  });
+
+  return [...new Set(cles)].sort().map((cle) => new Date(`${cle}T00:00:00.000Z`));
+}
+
 function parseNumber(value, fieldName) {
   if (value === null || value === undefined || value === '') return null;
 
@@ -69,6 +113,11 @@ function missionData(body, { partial = false } = {}) {
   if (body.heures !== undefined) data.heures = parseNumber(body.heures, 'Heures');
   if (body.montantHt !== undefined) data.montantHt = parseNumber(body.montantHt, 'Montant HT');
   if (body.nbJours !== undefined) data.nbJours = parseNumber(body.nbJours, 'Nombre de jours');
+
+  if (body.joursOff !== undefined) data.joursOff = parseJoursOff(body.joursOff, 'Jours non travaillés');
+  if (body.datesExclues !== undefined) data.datesExclues = parseJours(body.datesExclues, 'Date exclue');
+  if (body.datesIncluses !== undefined) data.datesIncluses = parseJours(body.datesIncluses, 'Date incluse');
+
   if (body.note !== undefined) data.note = body.note?.trim() || null;
 
   return data;

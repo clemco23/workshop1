@@ -17,7 +17,7 @@ import { fetchProjets } from '../api/projets.js'
 import { fetchConfigSeuil } from '../api/compte.js'
 import { MISSION_STATUT, MISSION_TYPE, STATUTS_ACQUIS, enumMeta } from '../lib/enums.js'
 import { heuresMission } from '../lib/dashboard.js'
-import { nbJoursCalendaires } from '../lib/missions.js'
+import { nbJoursTravailles } from '../lib/missions.js'
 import {
   formatDate,
   formatDateLongue,
@@ -73,7 +73,7 @@ function MissionDetail() {
   const heuresEstimees = mission.heures == null
   const montant = num(mission.montantHt)
   const joursEstimes = mission.nbJours == null
-  const jours = joursEstimes ? nbJoursCalendaires(mission) : num(mission.nbJours)
+  const jours = joursEstimes ? nbJoursTravailles(mission) : num(mission.nbJours)
 
   // Regle metier : seules les missions INTERMITTENCE *acquises* alimentent le
   // seuil annuel (cf. STATUTS_ACQUIS). Une mission proposee ne compte pas encore.
@@ -107,7 +107,7 @@ function MissionDetail() {
       <MissionFormModal
         ouvert={edition}
         onClose={() => setEdition(false)}
-        heuresJourDefaut={configSeuil.heuresJourDefaut}
+        configSeuil={configSeuil}
         mission={mission}
         onEnregistre={() => revalidator.revalidate()}
       />
