@@ -8,13 +8,13 @@ import { enregistrerUtilisateur, lireUtilisateur } from '../../lib/session.js'
 import { cn } from '../../lib/cn.js'
 
 // Coquille de l'application : sidebar fixe a partir de md, tiroir en dessous.
-// Montee comme route parente dans router.jsx — chaque page rend juste son contenu.
+// Montee comme route parente dans router.jsx, chaque page rend juste son contenu.
 function AppLayout() {
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   // Rehydratation de la session : la copie dans localStorage sert a afficher
   // tout de suite, /api/auth/me la corrige ensuite. C'est le layout qui s'en
-  // charge — monte une seule fois pour toute la partie authentifiee, l'appel ne
+  // charge, monte une seule fois pour toute la partie authentifiee, l'appel ne
   // se rejoue donc pas a chaque navigation.
   const [user, setUser] = useState(lireUtilisateur)
 

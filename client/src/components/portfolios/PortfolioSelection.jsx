@@ -9,7 +9,7 @@ import { mediasProjet } from '../../lib/medias.js'
 //
 // Composant controle : il ne tient aucun etat, la page detient la liste et
 // applique monter / descendre / retirer. C'est ce qui permet d'enchainer
-// plusieurs reordonnancements avant un seul `PUT /:id/projects` — l'endpoint
+// plusieurs reordonnancements avant un seul `PUT /:id/projects`, l'endpoint
 // remplace la selection entiere, envoyer un appel par fleche serait a la fois
 // bavard et faux si l'un d'eux echouait.
 //

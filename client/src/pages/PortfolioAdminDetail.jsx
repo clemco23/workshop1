@@ -42,7 +42,7 @@ function PortfolioAdminDetail() {
   // La selection reste locale tant qu'elle n'est pas enregistree : monter,
   // descendre, ajouter et retirer se composent, et un seul PUT part a la fin.
   // `PUT /:id/projects` remplace la selection entiere, l'ordre valant la
-  // position dans le tableau — c'est ce qui rend l'operation idempotente, et ce
+  // position dans le tableau, c'est ce qui rend l'operation idempotente, et ce
   // qui rendrait faux un appel par fleche.
   const [ids, setIds] = useState(idsInitiaux)
   const [envoi, setEnvoi] = useState(false)
@@ -227,7 +227,7 @@ function PortfolioAdminDetail() {
                 page perdrait la selection sans prevenir. */}
             {modifie && !erreur && (
               <p className="mt-4 border-t border-slate-100 pt-3 text-xs text-amber-700">
-                Selection modifiee — elle ne sera visible sur la page publique qu'apres
+                Selection modifiee : elle ne sera visible sur la page publique qu'apres
                 enregistrement.
               </p>
             )}

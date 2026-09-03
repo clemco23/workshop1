@@ -40,7 +40,7 @@ function ProjetMediasListe({ projet }) {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-slate-900">{media.titre}</p>
               <p className="truncate text-xs text-slate-500">
-                {media.url ?? 'Fichier stocke — sans adresse publique'}
+                {media.url ?? 'Fichier stocke, sans adresse publique'}
               </p>
             </div>
 

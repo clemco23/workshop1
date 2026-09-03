@@ -1,4 +1,4 @@
-# CLAUDE.md — server
+# CLAUDE.md, server
 
 API Express 5 du monorepo `wks1`. Le frontend React/Vite vit dans `../client`
 (voir `../client/CLAUDE.md`).
@@ -13,7 +13,7 @@ npm run dev     # nodemon src/index.js (rechargement auto)
 npm start       # node src/index.js
 ```
 
-Prisma (le CLI lit `prisma7.config.ts` — malgré son nom, c'est bien Prisma 6) :
+Prisma (le CLI lit `prisma7.config.ts` : malgré son nom, c'est bien Prisma 6) :
 
 ```bash
 npx prisma validate            # vérifie le schéma
@@ -41,8 +41,8 @@ curl localhost:4000/api/missions -H 'Authorization: Bearer <token>'
 ## Stack
 
 - **Express 5** (attention : le routage et la gestion des erreurs async diffèrent
-  d'Express 4 — les rejets de promesse dans un handler sont propagés automatiquement).
-- **CommonJS** (`require` / `module.exports`) — le `package.json` n'a pas `"type": "module"`.
+  d'Express 4, les rejets de promesse dans un handler sont propagés automatiquement).
+- **CommonJS** (`require` / `module.exports`) : le `package.json` n'a pas `"type": "module"`.
   Ne pas introduire de syntaxe ESM sans changer ce champ. Seule exception :
   `prisma7.config.ts`, lu par le CLI Prisma et non par le runtime Node.
 - **Prisma 6** + **PostgreSQL** (Supabase). Le client est un `new PrismaClient()` nu,
@@ -52,7 +52,7 @@ curl localhost:4000/api/missions -H 'Authorization: Bearer <token>'
 - **jsonwebtoken** + **bcryptjs** + **nodemailer** pour l'authentification (voir la
   section dédiée).
 - **multer** (stockage mémoire) + **@supabase/supabase-js** pour l'upload des médias de
-  projet vers Supabase Storage — le serveur n'écrit **aucun fichier sur son disque**.
+  projet vers Supabase Storage, le serveur n'écrit **aucun fichier sur son disque**.
 - **cors** et **dotenv**.
 
 `pg` et `better-sqlite3` sont encore dans les dépendances mais **plus importés nulle
@@ -66,7 +66,7 @@ server/
     index.js                 # bootstrap : dotenv, cors, express.json, montage des routes,
                              #   listen, puis le middleware d'erreur
     config/
-      prisma.js              # singleton PrismaClient — le seul endroit qui l'instancie
+      prisma.js              # singleton PrismaClient, le seul endroit qui l'instancie
     routes/                  # un fichier par préfixe : déclare les verbes, branche requireAuth
       authRoutes.js       healthRoutes.js     missionRoutes.js    settingsRoutes.js
       dashboardRoutes.js  projectRoutes.js    documentRoutes.js   portfolioRoutes.js
@@ -78,8 +78,8 @@ server/
     services/
       authService.js            # codes à usage unique, JWT, résolution du user depuis le header
       emailService.js           # envoi du code par Gmail (nodemailer)
-      projectMediaService.js    # médias de projet — bucket public, URL publique
-      documentStorageService.js # justificatifs — URL signée, jamais d'URL publique
+      projectMediaService.js    # médias de projet, bucket public, URL publique
+      documentStorageService.js # justificatifs, URL signée, jamais d'URL publique
     middlewares/
       authMiddleware.js      # requireAuth : pose req.user ou répond 401
   prisma/
@@ -88,7 +88,7 @@ server/
 ```
 
 Le découpage route / controller / service est en place : **une nouvelle ressource suit
-le même moule** — un fichier dans `routes/` monté dans `index.js`, un fichier dans
+le même moule**, un fichier dans `routes/` monté dans `index.js`, un fichier dans
 `controllers/`, et la logique réutilisable ou l'appel externe dans `services/`.
 
 `prisma` s'importe **toujours** depuis `config/prisma.js` (`const { prisma } =
@@ -131,11 +131,11 @@ Conventions du schéma à respecter pour tout nouveau champ/modèle :
   en `onDelete: SetNull`.
 
 Rappel côté client : Prisma sérialise les `Decimal` en **chaînes** (`'40.00'`) dans le
-JSON — c'est voulu, `../client/src/lib/format.js` a un `num()` pour ça.
+JSON, c'est voulu, `../client/src/lib/format.js` a un `num()` pour ça.
 
 ### Jours travaillés d'une mission
 
-Une mission reste **une seule ligne** sur `[date_debut, date_fin]` — la découper en
+Une mission reste **une seule ligne** sur `[date_debut, date_fin]` : la découper en
 sous-périodes casserait le regroupement par client, les documents rattachés et la
 timeline. Les jours non travaillés sont donc un **masque** posé sur la période, en trois
 champs :
@@ -146,8 +146,8 @@ champs :
 | `dates_exclues`  | `DateTime[]` | exceptions ponctuelles retirées                          |
 | `dates_incluses` | `DateTime[]` | exceptions ponctuelles **rajoutées**                     |
 
-- Les jours de la semaine suivent la convention **`getUTCDay()`** — `0` = dimanche …
-  `6` = samedi — de la base à l'écran, pour n'avoir aucune traduction à faire nulle part.
+- Les jours de la semaine suivent la convention **`getUTCDay()`** : `0` = dimanche …
+  `6` = samedi, de la base à l'écran, pour n'avoir aucune traduction à faire nulle part.
   `config_seuil.jours_off_defaut` utilise la même.
 - **`dates_incluses` gagne sur tout le reste** : c'est le « je bosse quand même ce
   samedi-là ». Sans ce troisième champ, cocher « pas les week-ends » enfermerait la
@@ -158,7 +158,7 @@ champs :
   client. Ce n'est pas une règle : le modifier n'a aucun effet rétroactif sur les
   missions déjà enregistrées, et rien côté serveur ne le consulte.
 - La règle est appliquée **dans le client** (`src/lib/joursTravailles.js`) : le serveur
-  stocke et valide le masque, il n'en dérive aucun décompte — même politique que pour les
+  stocke et valide le masque, il n'en dérive aucun décompte, même politique que pour les
   agrégats du dashboard.
 
 ## Authentification
@@ -167,11 +167,11 @@ Il n'y a **pas de mot de passe** et **pas de Supabase Auth** (Supabase ne sert i
 de base Postgres et de Storage) : la connexion se fait par code à usage unique envoyé
 par email, échangé contre un JWT.
 
-1. `POST /api/auth/request-code` — normalise l'email (trim + minuscules), **crée le
+1. `POST /api/auth/request-code` : normalise l'email (trim + minuscules), **crée le
    `User` s'il n'existe pas** (inscription et connexion sont donc le même appel), tire
    un code à 6 chiffres, en stocke le `bcrypt` (jamais le code en clair) avec une
    expiration à **10 minutes**, et l'envoie via `emailService`.
-2. `POST /api/auth/verify-code` — reprend le dernier code non utilisé et non expiré, le
+2. `POST /api/auth/verify-code` : reprend le dernier code non utilisé et non expiré, le
    compare en `bcrypt.compare`, le marque `usedAt`, et renvoie `{ token, user }`. Le JWT
    porte `{ userId, email }`, signé avec `JWT_SECRET`, valable **7 jours**.
 3. Les appels suivants portent `Authorization: Bearer <token>`.
@@ -179,7 +179,7 @@ par email, échangé contre un JWT.
 `requireAuth` (`middlewares/authMiddleware.js`) résout le user via `getUserFromToken()`
 et pose `req.user` (sélection restreinte : `id`, `email`, `firstName`, `lastName`,
 `createdAt`) ou répond `401 { message: 'Non authentifié' }`. Un jeton invalide ou expiré
-n'est pas distingué d'un jeton absent — `getUserFromToken` renvoie `null` dans tous les
+n'est pas distingué d'un jeton absent, `getUserFromToken` renvoie `null` dans tous les
 cas.
 
 **Toute nouvelle route métier est protégée** : `router.use(requireAuth)` en tête du
@@ -189,7 +189,7 @@ compris les lectures par id (`findFirst({ where: { id, userId } })`, jamais
 reçus dans un body (`missionId`, `projectIds`) sont revérifiés comme appartenant au
 `req.user` avant d'être écrits.
 
-La seule exception est `/api/public/*`, monté sans `requireAuth` — voir plus bas.
+La seule exception est `/api/public/*`, monté sans `requireAuth` : voir plus bas.
 
 ## Routes existantes
 
@@ -198,35 +198,35 @@ Toutes préfixées `/api` sauf `/`. « Auth » = protégée par `requireAuth`.
 | Méthode | Chemin                        | Auth | Réponse                                                    |
 | ------- | ----------------------------- | :--: | ----------------------------------------------------------- |
 | GET     | `/`                           |      | texte `API server is ready`                                  |
-| GET     | `/api/health`                 |      | 200 `{ success, message, database, result, timestamp }` — `SELECT 1` via Prisma ; 500 `{ success: false, message, error }` si la DB est injoignable |
+| GET     | `/api/health`                 |      | 200 `{ success, message, database, result, timestamp }` : `SELECT 1` via Prisma ; 500 `{ success: false, message, error }` si la DB est injoignable |
 | POST    | `/api/auth/request-code`      |      | 200 `{ success, message, email }` ; 400 email invalide ; 502/503 email non parti |
 | POST    | `/api/auth/verify-code`       |      | 200 `{ success, message, token, user }` ; 400 code invalide/expiré ; 404 utilisateur inconnu |
 | GET     | `/api/auth/me`                |  •   | 200 `{ user }` ; 401 sinon (lit le header lui-même, pas via le middleware) |
-| GET     | `/api/dashboard`              |  •   | 200 `{ user, configSeuil, missions, documents }` — lignes brutes, **aucun total** : les agrégats sont calculés dans le client (`src/lib/dashboard.js`) |
+| GET     | `/api/dashboard`              |  •   | 200 `{ user, configSeuil, missions, documents }` : lignes brutes, **aucun total** : les agrégats sont calculés dans le client (`src/lib/dashboard.js`) |
 | GET     | `/api/missions`               |  •   | 200 `Mission[]`, triées par `dateDebut` desc                 |
 | POST    | `/api/missions`               |  •   | 201 `Mission`                                                |
 | GET     | `/api/missions/:id`           |  •   | 200 `Mission` avec `documents` et `projects` ; 404            |
 | PATCH   | `/api/missions/:id`           |  •   | 200 `Mission` (mise à jour partielle) ; 404                   |
 | DELETE  | `/api/missions/:id`           |  •   | 204 sans corps ; 404                                          |
 | GET     | `/api/projects`               |  •   | 200 `Project[]`, triés par `date` desc                        |
-| POST    | `/api/projects`               |  •   | 201 `Project` — `multipart/form-data`, champ fichier `file`   |
+| POST    | `/api/projects`               |  •   | 201 `Project` : `multipart/form-data`, champ fichier `file`   |
 | GET     | `/api/projects/:id`           |  •   | 200 `Project` avec sa `mission` et ses `portfolios` (voir plus bas) ; 404 |
 | PATCH   | `/api/projects/:id`           |  •   | 200 `Project` ; 404                                           |
-| DELETE  | `/api/projects/:id`           |  •   | 204 — supprime aussi le média dans Storage                    |
+| DELETE  | `/api/projects/:id`           |  •   | 204, supprime aussi le média dans Storage                    |
 | GET     | `/api/documents`              |  •   | 200 `Document[]` avec leur `mission`, triés par `uploadedAt` desc |
-| POST    | `/api/documents`              |  •   | 201 `Document` — `multipart/form-data`, champ fichier `file`  |
+| POST    | `/api/documents`              |  •   | 201 `Document` : `multipart/form-data`, champ fichier `file`  |
 | GET     | `/api/documents/:id`          |  •   | 200 `Document` avec sa `mission` ; 404                        |
-| GET     | `/api/documents/:id/url`      |  •   | 200 `{ url }` — lien signé valable **1 h** ; 404              |
-| PATCH   | `/api/documents/:id`          |  •   | 200 `Document` — remplace le fichier si `file` est fourni ; 404 |
-| DELETE  | `/api/documents/:id`          |  •   | 204 — supprime aussi le fichier dans Storage                  |
+| GET     | `/api/documents/:id/url`      |  •   | 200 `{ url }` : lien signé valable **1 h** ; 404              |
+| PATCH   | `/api/documents/:id`          |  •   | 200 `Document` : remplace le fichier si `file` est fourni ; 404 |
+| DELETE  | `/api/documents/:id`          |  •   | 204, supprime aussi le fichier dans Storage                  |
 | GET     | `/api/portfolios`             |  •   | 200 `PortfolioPublic[]` + `nbProjets` et `publicUrl`          |
 | POST    | `/api/portfolios`             |  •   | 201 portfolio avec ses projets ; slug généré                  |
 | GET     | `/api/portfolios/:id`         |  •   | 200 portfolio + `projets` (ordonnés) + `projetsDisponibles` ; 404 |
-| PATCH   | `/api/portfolios/:id`         |  •   | 200 — `titrePage` et `actif` seulement (le slug n'est pas modifiable) ; 404 |
-| PUT     | `/api/portfolios/:id/projects`|  •   | 200 — **remplace** toute la sélection ; renvoie la même charge que le GET ; 404 |
+| PATCH   | `/api/portfolios/:id`         |  •   | 200, `titrePage` et `actif` seulement (le slug n'est pas modifiable) ; 404 |
+| PUT     | `/api/portfolios/:id/projects`|  •   | 200, **remplace** toute la sélection ; renvoie la même charge que le GET ; 404 |
 | DELETE  | `/api/portfolios/:id`         |  •   | 204 ; 404                                                     |
 | GET     | `/api/public/portfolio/:slug` |      | 200 `{ slug, titrePage, auteur, projets[] }` ; 404 si le slug est inconnu **ou le portfolio inactif** |
-| GET     | `/api/parametres`             |  •   | 200 `ConfigSeuil` — `upsert`, donc crée la ligne aux valeurs par défaut à la première lecture |
+| GET     | `/api/parametres`             |  •   | 200 `ConfigSeuil` : `upsert`, donc crée la ligne aux valeurs par défaut à la première lecture |
 | PUT     | `/api/parametres`             |  •   | 200 `ConfigSeuil` ; 400 si aucun champ connu dans le body      |
 
 `PUT /api/parametres` accepte `seuilHeuresAnnuel`, `heuresJourDefaut`, `fenetreMois` et
@@ -239,7 +239,7 @@ travaillé.
 Filtres en query sur `GET /api/missions` : `type`, `statut` (valeurs d'enum, 400 sinon),
 `client` (`contains`, insensible à la casse), `mois` au format `YYYY-MM` (400 sinon).
 Attention : `mois` filtre sur `dateDebut`, donc une mission commencée le mois d'avant et
-toujours en cours n'y apparaît pas — à revoir si le client attend un chevauchement.
+toujours en cours n'y apparaît pas, à revoir si le client attend un chevauchement.
 
 Validation du body (`missionData()`) : `clientProduction` non vide, `type` dans l'enum,
 `dateFin >= dateDebut`, nombres finis `>= 0`, chaînes vides ramenées à `null`. En
@@ -258,7 +258,7 @@ serveur. À reprendre ici si une autre interface écrit un jour des missions.
 Supabase Storage via `projectMediaService`.
 
 - Le chemin de stockage est `{userId}/projects/{uuid}{extension}` : le préfixe par
-  utilisateur est ce qui rend les objets attribuables — le garder pour tout nouveau
+  utilisateur est ce qui rend les objets attribuables, le garder pour tout nouveau
   média.
 - `project.link` reçoit l'URL **publique** renvoyée par Storage. Un projet de type
   `LINK` n'accepte pas de fichier et fournit son `link` dans le body (validé : http/https
@@ -273,35 +273,33 @@ Supabase Storage via `projectMediaService`.
 
 `GET /api/projects/:id` renvoie aussi **`portfolios`** : les pages publiques où la fiche
 figure, chacune avec son `ordre`. C'est ce qui permet au client de dire si une
-réalisation est exposée, et où. La table de jonction est **aplatie** avant la réponse —
-le client lit un tableau de portfolios, pas des lignes de liaison — et la projection est
+réalisation est exposée, et où. La table de jonction est **aplatie** avant la réponse, le client lit un tableau de portfolios, pas des lignes de liaison, et la projection est
 explicite (`id`, `slug`, `titrePage`, `actif`) : `user_id` n'a rien à faire dans une
 réponse, même authentifiée.
 
-Filtres en query sur `GET /api/projects` : `tag`, `type`, et `missionId` — dont la
+Filtres en query sur `GET /api/projects` : `tag`, `type`, et `missionId` : dont la
 valeur spéciale **`aucune`** liste les fiches non rattachées, même convention que les
 documents. La liste inclut la `mission` de chaque fiche : sans elle, un projet rattaché
 s'afficherait comme un projet perso dans les cartes du client.
 
 ### Documents
 
-Le coffre des justificatifs. Même mécanique que les médias de projet — multer en
+Le coffre des justificatifs. Même mécanique que les médias de projet, multer en
 `memoryStorage` (champ `file`, 50 Mo), chemin `{userId}/documents/{uuid}{extension}`,
-nettoyage symétrique en cas d'échec ou de remplacement — avec **une différence qui
+nettoyage symétrique en cas d'échec ou de remplacement, avec **une différence qui
 gouverne tout le reste** : un justificatif n'a jamais d'URL publique.
 
 - La lecture passe donc par `GET /api/documents/:id/url`, qui rend une **URL signée
   valable une heure** (`createSignedUrl`). Le client ne fabrique jamais l'URL depuis
   `fichier_path` : ce champ est un chemin de stockage, pas une adresse.
 - Formats acceptés : PDF et images (mimetype **ou** extension, comme pour les projets).
-- Filtres en query sur `GET /api/documents` : `categorie`, et `missionId` — dont la
+- Filtres en query sur `GET /api/documents` : `categorie`, et `missionId` : dont la
   valeur spéciale **`aucune`** liste les documents non rattachés (`mission_id IS NULL`).
 - `PATCH` accepte un nouveau `file` : l'ancien objet n'est supprimé qu'une fois la ligne
   mise à jour.
 
 ⚠️ **Le bucket a un repli qui n'en est pas un.** `documentStorageService` lit
-`SUPABASE_DOCUMENT_BUCKET` et, à défaut, retombe sur `SUPABASE_PROJECT_MEDIA_BUCKET` —
-c'est-à-dire le bucket **public** des médias de projet. Les justificatifs y sont alors
+`SUPABASE_DOCUMENT_BUCKET` et, à défaut, retombe sur `SUPABASE_PROJECT_MEDIA_BUCKET`, c'est-à-dire le bucket **public** des médias de projet. Les justificatifs y sont alors
 lisibles par quiconque connaît l'URL, la signature ne protégeant plus rien. Le repli
 dépanne en développement ; en production, `SUPABASE_DOCUMENT_BUCKET` doit pointer un
 bucket privé dédié, et cette variable devrait devenir obligatoire.
@@ -310,7 +308,7 @@ bucket privé dédié, et cette variable devrait devenir obligatoire.
 
 - Le **slug est généré côté serveur** à la création : `slugify(titrePage)` (accents
   retirés, minuscules, non-alphanumériques en tirets, 60 caractères max) suivi de 4
-  octets aléatoires en hexadécimal. Il n'est **jamais** modifiable ensuite — un lien
+  octets aléatoires en hexadécimal. Il n'est **jamais** modifiable ensuite, un lien
   public déjà partagé ne doit pas casser.
 - Chaque réponse porte un `publicUrl` calculé depuis `PUBLIC_APP_URL` : le client n'a pas
   à reconstruire l'URL, et un changement de domaine se fait au seul niveau de la variable
@@ -323,7 +321,7 @@ bucket privé dédié, et cette variable devrait devenir obligatoire.
   sélectionnés), pour que l'écran d'administration se peuple en un seul appel.
 - La route publique ne renvoie **que** les champs d'affichage (`titre`, `description`,
   `tag`, `type`, `date`, `link`, `ordre`) plus le nom de l'auteur : ni identifiants, ni
-  `userId`, ni email. **Garder cette projection explicite** — ne jamais y passer une
+  `userId`, ni email. **Garder cette projection explicite** : ne jamais y passer une
   entité Prisma entière.
 
 ### Convention de réponse
@@ -334,7 +332,7 @@ explicite.
 
 `/api/health` et `/api/auth/*` portent encore un booléen `success` : c'est l'ancienne
 convention, conservée parce que le client la lit. **Ne pas l'étendre aux nouvelles
-routes** — suivre la forme ci-dessus.
+routes**, suivre la forme ci-dessus.
 
 Statut HTTP toujours explicite (`res.status(200).json(...)`), `201` sur une création,
 `204` sans corps sur une suppression.
@@ -358,26 +356,26 @@ service indisponible lève de même `status: 503` (Storage non configuré) ou `5
 `../.env`, **avant** tout `require` qui lit `process.env`. Le `.env` est ignoré par git,
 `.env.example` est versionné et doit rester à jour.
 
-- `PORT` — port d'écoute, défaut `4000`.
-- `CORS_ORIGIN` — origine autorisée, défaut `*`. En production, la fixer sur l'URL du
+- `PORT` : port d'écoute, défaut `4000`.
+- `CORS_ORIGIN` : origine autorisée, défaut `*`. En production, la fixer sur l'URL du
   client plutôt que de laisser `*` (le CORS est configuré avec `credentials: true`).
-- `DATABASE_URL` — connexion PostgreSQL (pooler), lue par le bloc `datasource` du schéma
+- `DATABASE_URL` : connexion PostgreSQL (pooler), lue par le bloc `datasource` du schéma
   et par le CLI Prisma. Pas de valeur de repli : sans elle, `/api/health` répond 500.
-- `DIRECT_URL` — connexion directe (hors pooler), pour les migrations.
-- `JWT_SECRET` — signature des jetons. Le repli `'dev-secret-change-me'` est **pour le
+- `DIRECT_URL` : connexion directe (hors pooler), pour les migrations.
+- `JWT_SECRET` : signature des jetons. Le repli `'dev-secret-change-me'` est **pour le
   dev uniquement** : le définir en production, sinon les jetons sont forgeables.
-- `GMAIL_USER` / `GMAIL_APP_PASSWORD` — compte Gmail dédié et mot de passe d'application
+- `GMAIL_USER` / `GMAIL_APP_PASSWORD` : compte Gmail dédié et mot de passe d'application
   Google pour l'envoi des codes. Absents, `emailService` lève
   `CONFIGURATION_GMAIL_MANQUANTE` et aucune connexion n'est possible.
-- `SUPABASE_URL` / `SUPABASE_SECRET_KEY` / `SUPABASE_PROJECT_MEDIA_BUCKET` — Storage des
+- `SUPABASE_URL` / `SUPABASE_SECRET_KEY` / `SUPABASE_PROJECT_MEDIA_BUCKET` : Storage des
   médias de projet, servis par URL publique. `SUPABASE_SECRET_KEY` est une **clé de
   service** : elle ne doit jamais être exposée au client ni préfixée `VITE_`. Absentes,
   les routes projets qui touchent un fichier répondent 503.
-- `SUPABASE_DOCUMENT_BUCKET` — bucket **privé** des justificatifs. Techniquement
+- `SUPABASE_DOCUMENT_BUCKET` : bucket **privé** des justificatifs. Techniquement
   facultative (repli sur `SUPABASE_PROJECT_MEDIA_BUCKET`), mais ce repli range des
   documents privés dans un bucket public : à considérer comme obligatoire hors
   développement, voir la section Documents.
-- `PUBLIC_APP_URL` — URL publique du front, défaut `http://localhost:5173`, utilisée pour
+- `PUBLIC_APP_URL` : URL publique du front, défaut `http://localhost:5173`, utilisée pour
   composer le `publicUrl` des portfolios.
 - `NODE_ENV`.
 
@@ -393,7 +391,7 @@ explicite quand c'est possible, documentée ici **et** ajoutée à `.env.example
   `return next(error)`.
 - Un helper de validation lève une `Error` avec `status`, il ne répond jamais lui-même.
 
-## État actuel — à faire
+## État actuel, à faire
 
 - **Bucket des documents à isoler** : tant que `SUPABASE_DOCUMENT_BUCKET` n'est pas
   définie, les justificatifs partent dans le bucket public des médias de projet (voir la
@@ -415,4 +413,4 @@ explicite quand c'est possible, documentée ici **et** ajoutée à `.env.example
   « Projets et médias » est à compléter : comparer `existing.link` et le `link` final,
   et supprimer dès que l'ancien pointait Storage.
 - Pas de migration versionnée (`prisma/migrations/` absent), pas de tests. Le schéma est
-  poussé avec `npx prisma db push` — c'est ce qui a créé les colonnes du masque de jours.
+  poussé avec `npx prisma db push` : c'est ce qui a créé les colonnes du masque de jours.

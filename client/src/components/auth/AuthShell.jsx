@@ -2,7 +2,7 @@ import Icon from '../ui/Icon.jsx'
 import { cn } from '../../lib/cn.js'
 
 // Coquille des ecrans d'authentification (/login, /verify-code). Ces pages sont
-// hors AppLayout — pas de sidebar avant d'etre connecte — donc elles rendent
+// hors AppLayout, pas de sidebar avant d'etre connecte, donc elles rendent
 // leur propre plein ecran, en deux volets.
 //
 // Le volet de gauche prend la place que tiendra la sidebar : meme logo, meme
@@ -79,7 +79,7 @@ function AuthShell({ titre, description, children, pied }) {
           </ul>
         </div>
 
-        <p className="relative text-xs text-brand-200">v0.1 — demo</p>
+        <p className="relative text-xs text-brand-200">v0.1 · demo</p>
       </aside>
 
       {/* Volet formulaire. Pas de Card : le volet de gauche structure deja la

@@ -8,7 +8,7 @@ import { formatDate } from '../../lib/format.js'
 // Fiche projet en carte : c'est la matiere du portfolio public, donc la vignette
 // prime sur la ligne de tableau. `description` est nullable, `mission_id` aussi
 // (projet perso). Les medias passent par ProjetMedias : une realisation se montre
-// avec une video, des images, un PDF ou un lien — jamais une seule URL en dur.
+// avec une video, des images, un PDF ou un lien, jamais une seule URL en dur.
 function ProjetCard({ projet }) {
   const tag = enumMeta(PROJET_TAG, projet.tag)
 

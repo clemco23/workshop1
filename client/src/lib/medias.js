@@ -7,7 +7,7 @@ import { PROJET_TYPE, enumMeta } from './enums.js'
 // IMAGE / PDF / VIDEO / LINK) et `projet.link`. Tout le client passe malgre tout
 // par `mediasProjet()`, qui rend une *liste* : le jour ou l'API renverra un
 // tableau `medias` (table `projet_media` : projet_id, type, url | fichier_path,
-// titre, ordre), c'est cette seule fonction qui change — ni les cartes ni les pages.
+// titre, ordre), c'est cette seule fonction qui change, ni les cartes ni les pages.
 //
 // A ne pas confondre avec `document` : celui-la est le coffre prive des
 // justificatifs, ces medias-ci sont publies sur /portfolio/:slug.
@@ -32,7 +32,7 @@ const HEBERGEURS_VIDEO = ['youtube.', 'youtu.be', 'vimeo.', 'dailymotion.']
 
 // Les medias envoyes par le formulaire vivent dans un bucket *public* : le
 // serveur (`uploadProjectMedia`) range leur URL publique dans `link`, et c'est
-// a cette forme qu'on les reconnait — utile pour distinguer, a l'edition, une
+// a cette forme qu'on les reconnait, utile pour distinguer, a l'edition, une
 // fiche alimentee par un fichier d'une fiche qui pointe une adresse choisie.
 const MARQUEUR_STORAGE = '/storage/v1/object/public/'
 

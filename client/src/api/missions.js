@@ -26,7 +26,7 @@ export async function createMission(payload) {
 }
 
 // PATCH et non PUT : seuls les champs presents dans le corps sont valides et
-// ecrits. Envoyer le payload entier reste valable — c'est ce que fait le
+// ecrits. Envoyer le payload entier reste valable, c'est ce que fait le
 // formulaire, qui tient tous les champs.
 export async function updateMission(id, payload) {
   const { data } = await api.patch(`/api/missions/${id}`, payload)

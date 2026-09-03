@@ -167,7 +167,7 @@ function ProjetFormModal({ ouvert, onClose, missions = [], projet = null, onEnre
       { value: '', label: 'Aucune (projet personnel)' },
       ...missions.map((mission) => ({
         value: mission.id,
-        label: `${mission.clientProduction} — ${formatPeriode(mission.dateDebut, mission.dateFin)}`,
+        label: `${mission.clientProduction} · ${formatPeriode(mission.dateDebut, mission.dateFin)}`,
       })),
     ],
     [missions],
@@ -223,7 +223,7 @@ function ProjetFormModal({ ouvert, onClose, missions = [], projet = null, onEnre
           value={formulaire.titre}
           onChange={setChamp('titre')}
           erreur={erreurs.titre}
-          placeholder="Captation live — Cie du Lys"
+          placeholder="Captation live, Cie du Lys"
           data-autofocus
         />
 
@@ -376,14 +376,14 @@ function ProjetFormModal({ ouvert, onClose, missions = [], projet = null, onEnre
                   sinon la zone de depot vide se lit comme une fiche sans media. */}
               {mediaActuel && (
                 <p className="text-xs text-slate-500">
-                  Media actuel conserve —{' '}
+                  Media actuel conserve.{' '}
                   <a
                     href={mediaActuel}
                     target="_blank"
                     rel="noreferrer"
                     className="font-medium text-brand-700 underline underline-offset-2"
                   >
-                    l’ouvrir
+                    L’ouvrir
                   </a>
                   . Choisis un fichier pour le remplacer.
                 </p>
@@ -406,13 +406,13 @@ function ProjetFormModal({ ouvert, onClose, missions = [], projet = null, onEnre
                 onChange={setChamp('link')}
                 erreur={erreurs.link}
                 placeholder="https://vimeo.com/…"
-                hint="Video hebergee, image, PDF ou page — une seule adresse par fiche."
+                hint="Video hebergee, image, PDF ou page. Une seule adresse par fiche."
               />
 
               {typeIncoherent && (
                 <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
                   Ce lien ressemble plutot a{' '}
-                  {enumMeta(PROJET_TYPE, typeDeduit).label.toLowerCase()} — verifie le type choisi.
+                  {enumMeta(PROJET_TYPE, typeDeduit).label.toLowerCase()} : verifie le type choisi.
                 </p>
               )}
             </>

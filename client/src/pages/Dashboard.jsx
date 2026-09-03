@@ -34,7 +34,7 @@ function Dashboard() {
     <>
       <PageHeader
         title="Dashboard"
-        subtitle={`Fenetre glissante de ${seuil.fenetreMois} mois — depuis ${formatMois(seuil.debut)}`}
+        subtitle={`Fenetre glissante de ${seuil.fenetreMois} mois, depuis ${formatMois(seuil.debut)}`}
       >
         <Button as={Link} to="/parametres" variant="secondary">
           Seuils
@@ -74,7 +74,7 @@ function Dashboard() {
           label="Missions confirmees"
           value={missions.confirmees}
           icon="missions"
-          hint={`${missions.proposees} proposee(s) — ${missions.aVenir} a venir`}
+          hint={`${missions.proposees} proposee(s) · ${missions.aVenir} a venir`}
         />
       </div>
 
@@ -115,7 +115,7 @@ function Dashboard() {
                           {mission.clientProduction}
                         </p>
                         <p className="truncate text-xs text-slate-500">
-                          {type.label} — {formatPeriode(mission.dateDebut, mission.dateFin)}
+                          {type.label} · {formatPeriode(mission.dateDebut, mission.dateFin)}
                         </p>
                       </div>
                       <span className="hidden text-sm text-slate-500 tabular-nums sm:inline">

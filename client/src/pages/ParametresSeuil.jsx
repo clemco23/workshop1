@@ -146,7 +146,7 @@ function ParametresSeuil() {
               <strong className="font-medium text-slate-900">fenetre glissante</strong> des{' '}
               {formatHeures(fenetre)} derniers mois. Seules les missions d'intermittence{' '}
               <strong className="font-medium text-slate-900">confirmees ou terminees</strong> y
-              entrent — une mission seulement proposee est ignoree.
+              entrent : une mission seulement proposee est ignoree.
             </p>
           </Card>
 
@@ -176,7 +176,7 @@ function ParametresSeuil() {
               <strong className="font-medium text-slate-900">
                 nombre de jours x {formatHeures(heuresJour)} h
               </strong>{' '}
-              — les listes marquent alors la valeur comme estimee.
+              , les listes marquent alors la valeur comme estimee.
             </p>
           </Card>
 
@@ -194,7 +194,7 @@ function ParametresSeuil() {
               Une nouvelle mission part de ces jours-la : il n'y a plus qu'a traiter les
               exceptions, dans le calendrier du formulaire. C'est un{' '}
               <strong className="font-medium text-slate-900">point de depart</strong>, pas une
-              regle — changer ce reglage ne touche pas aux missions deja enregistrees.
+              regle : changer ce reglage ne touche pas aux missions deja enregistrees.
             </p>
           </Card>
         </div>

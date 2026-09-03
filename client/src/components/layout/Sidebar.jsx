@@ -47,7 +47,7 @@ function Sidebar({ onNavigate }) {
         ))}
       </nav>
 
-      <p className="px-3 text-xs text-slate-400">v0.1 — demo</p>
+      <p className="px-3 text-xs text-slate-400">v0.1 · demo</p>
     </div>
   )
 }

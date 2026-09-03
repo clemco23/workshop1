@@ -6,7 +6,7 @@ import { formatDate, formatTaille } from '../../lib/format.js'
 
 // Documents rattaches a une mission (document.mission_id, nullable dans le schema).
 // Pas de lien de telechargement : `fichier_path` est un chemin de stockage, le
-// back rendra un lien signe (GET /api/documents/:id/url) — le client ne fabrique
+// back rendra un lien signe (GET /api/documents/:id/url), le client ne fabrique
 // jamais l'URL lui-meme.
 function MissionDocuments({ documents }) {
   if (documents.length === 0) {

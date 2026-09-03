@@ -85,7 +85,7 @@ async function listProjectsController(req, res, next) {
     }
 
     // Meme convention que les documents : `aucune` liste les fiches non
-    // rattachees (mission_id est nullable — un projet perso n'a pas de mission).
+    // rattachees (mission_id est nullable, un projet perso n'a pas de mission).
     if (missionId) where.missionId = missionId === 'aucune' ? null : missionId;
 
     // La mission est incluse parce que la liste l'affiche sur chaque carte :
@@ -109,7 +109,7 @@ async function getProjectController(req, res, next) {
         mission: true,
         // Les pages publiques ou la fiche figure : c'est ce qui dit a
         // l'utilisateur si sa realisation est exposee, et a quelle position.
-        // Selection explicite plutot que l'entite entiere — `user_id` n'a rien
+        // Selection explicite plutot que l'entite entiere, `user_id` n'a rien
         // a faire dans une reponse, meme authentifiee.
         portfolioLinks: {
           orderBy: { ordre: 'asc' },

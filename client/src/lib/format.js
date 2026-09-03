@@ -1,6 +1,6 @@
 // Formatage fr-FR, centralise pour que tout le site affiche pareil.
 // Attention : Prisma serialise les Decimal en *chaines* dans le JSON
-// ('40.00' et pas 40) — d'ou le Number() systematique avant calcul/affichage.
+// ('40.00' et pas 40), d'ou le Number() systematique avant calcul/affichage.
 
 const eurosFmt = new Intl.NumberFormat('fr-FR', {
   style: 'currency',
@@ -38,11 +38,11 @@ export function formatHeures(value) {
 }
 
 export function formatDate(value) {
-  return value ? dateFmt.format(new Date(value)) : '—'
+  return value ? dateFmt.format(new Date(value)) : '-'
 }
 
 export function formatDateLongue(value) {
-  return value ? dateLongueFmt.format(new Date(value)) : '—'
+  return value ? dateLongueFmt.format(new Date(value)) : '-'
 }
 
 export function formatMois(value) {
@@ -55,7 +55,7 @@ export function formatPeriode(debut, fin) {
 }
 
 export function formatTaille(octets) {
-  if (!octets) return '—'
+  if (!octets) return '-'
   const ko = octets / 1024
   return ko < 1024 ? `${Math.round(ko)} Ko` : `${heuresFmt.format(ko / 1024)} Mo`
 }

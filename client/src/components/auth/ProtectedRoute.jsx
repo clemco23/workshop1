@@ -8,7 +8,7 @@ import { lireJeton } from '../../lib/session.js'
 // La garde ne verifie que la *presence* d'un jeton, jamais sa validite : seul
 // le serveur peut en juger, et il le fait a chaque appel. Un jeton perime passe
 // donc ici, echoue sur le premier appel, et l'intercepteur de reponse
-// (api/client.js) efface la session — `RouteError` renvoie alors vers /login.
+// (api/client.js) efface la session, `RouteError` renvoie alors vers /login.
 // C'est ce qui evite un appel de verification a chaque navigation.
 function ProtectedRoute() {
   const { pathname } = useLocation()

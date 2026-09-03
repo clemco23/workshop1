@@ -10,7 +10,7 @@ import { messageErreur } from '../../lib/erreurs.js'
 // Le composant tient l'appel lui-meme (`onConfirmer` est asynchrone) parce que
 // l'attente et l'echec se lisent dans la boite, pas dans la page derriere : tant
 // que le serveur n'a pas repondu, la boite reste ouverte et le bouton occupe.
-// Elle ne se ferme qu'apres un succes — c'est la page qui decide ensuite quoi
+// Elle ne se ferme qu'apres un succes, c'est la page qui decide ensuite quoi
 // faire (naviguer, revalider).
 function ConfirmDialog({
   ouvert,

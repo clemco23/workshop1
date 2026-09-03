@@ -26,7 +26,7 @@ api.interceptors.request.use((config) => {
 //
 // Les deux routes de connexion sont exclues : un code invalide n'est pas une
 // session expiree, et il n'y a alors rien a effacer. /api/auth/me, lui, en est
-// bien une — c'est meme la ou la reconnexion se detecte au chargement.
+// bien une, c'est meme la ou la reconnexion se detecte au chargement.
 const ROUTES_CONNEXION = ['/api/auth/request-code', '/api/auth/verify-code']
 
 api.interceptors.response.use(

@@ -126,8 +126,8 @@ function MissionDetail() {
         description={`« ${mission.clientProduction} » sera retiree. Ses documents et fiches projet sont conserves, mais ne seront plus rattaches a aucune mission.`}
       />
 
-      {/* Le type se lit par trois canaux redondants — filet colore, pastille,
-          libelle — jamais par la couleur seule. */}
+      {/* Le type se lit par trois canaux redondants : filet colore, pastille,
+          libelle, jamais par la couleur seule. */}
       <div
         className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3"
         style={{ boxShadow: `inset 3px 0 0 ${couleur}` }}
@@ -139,7 +139,7 @@ function MissionDetail() {
         />
         <span className="text-sm font-medium text-slate-900">{type.label}</span>
         <Badge tone={statut.tone}>{statut.label}</Badge>
-        {mission.dateFin == null && <Badge tone="neutral">Sans date de fin — en cours</Badge>}
+        {mission.dateFin == null && <Badge tone="neutral">Sans date de fin, en cours</Badge>}
       </div>
 
       <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -156,7 +156,7 @@ function MissionDetail() {
         />
         <StatCard
           label="Montant HT"
-          value={mission.montantHt == null ? '—' : formatEuros(montant)}
+          value={mission.montantHt == null ? '-' : formatEuros(montant)}
           icon="euro"
           hint={tjm ? `${formatEuros(tjm)} / jour` : 'Montant non renseigne'}
         />
@@ -169,7 +169,7 @@ function MissionDetail() {
         />
         <StatCard
           label="Part du seuil"
-          value={compte ? `${formatHeures(partSeuil)} %` : '—'}
+          value={compte ? `${formatHeures(partSeuil)} %` : '-'}
           icon="missions"
           hint={
             compte
@@ -209,7 +209,7 @@ function MissionDetail() {
             </Ligne>
             <Ligne label="Montant HT">
               <span className="tabular-nums">
-                {mission.montantHt == null ? '—' : formatEuros(montant)}
+                {mission.montantHt == null ? '-' : formatEuros(montant)}
               </span>
             </Ligne>
             <Ligne label="Creee le">{formatDate(mission.createdAt)}</Ligne>

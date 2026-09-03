@@ -149,7 +149,7 @@ function Missions() {
       ) : (
         <Card
           title="Timeline"
-          subtitle="Une barre par mission, du debut a la fin — ordre chronologique"
+          subtitle="Une barre par mission, du debut a la fin, en ordre chronologique"
         >
           <MissionsTimeline timeline={timeline} heuresJourDefaut={configSeuil.heuresJourDefaut} />
           <div className="mt-4 border-t border-slate-100 pt-3">

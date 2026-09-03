@@ -1,6 +1,6 @@
 // Masque des jours travailles d'une mission. Une mission reste *une* periode
 // continue [date_debut, date_fin] ; ce module dit seulement quels jours en sont
-// retires — les week-ends, un jour de la semaine, une date precise.
+// retires, les week-ends, un jour de la semaine, une date precise.
 //
 // Fonctions pures sur des cles 'AAAA-MM-JJ', comme le reste des calculs de
 // calendrier (cf. `lib/missions.js`) : tout est en UTC, jamais en heure locale,

@@ -23,7 +23,7 @@ export async function fetchPortfolio(id) {
 }
 
 // Le slug n'est pas dans le corps : le serveur le derive du titre et y ajoute
-// quatre octets aleatoires, puis le fige — un lien deja partage ne doit pas
+// quatre octets aleatoires, puis le fige, un lien deja partage ne doit pas
 // casser. Le client se contente de l'afficher.
 export async function createPortfolio(payload) {
   const { data } = await api.post('/api/portfolios', payload)
@@ -37,7 +37,7 @@ export async function updatePortfolio(id, champs) {
 }
 
 // Remplacement de la selection entiere, pas un delta : l'ordre vaut la position
-// dans le tableau. C'est ce qui rend le reordonnancement idempotent — le client
+// dans le tableau. C'est ce qui rend le reordonnancement idempotent, le client
 // envoie la liste telle qu'elle doit etre. La reponse a la meme forme que
 // fetchPortfolio(), donc la page peut s'en servir directement.
 export async function updatePortfolioProjets(id, projectIds) {

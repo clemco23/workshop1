@@ -5,7 +5,7 @@ import EmptyState from './EmptyState.jsx'
 import { messageErreur } from '../../lib/erreurs.js'
 
 // Ecran d'erreur des routes : branche comme `ErrorBoundary`, il remplace celui
-// de developpement de react-router — que personne, et surtout pas un visiteur
+// de developpement de react-router, que personne, et surtout pas un visiteur
 // sans compte, ne doit voir.
 //
 // Un `loader` echoue de trois facons, et une seule est une vraie erreur :

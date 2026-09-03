@@ -127,7 +127,7 @@ function JoursTravaillesField({
                         type="button"
                         onClick={() => basculerJour(cle)}
                         aria-pressed={travaille}
-                        title={`${cle} — ${travaille ? 'travaille' : 'non travaille'}`}
+                        title={`${cle} : ${travaille ? 'travaille' : 'non travaille'}`}
                         className={cn(
                           'grid h-7 place-items-center rounded text-xs tabular-nums transition-colors',
                           travaille

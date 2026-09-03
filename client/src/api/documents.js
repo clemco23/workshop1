@@ -11,7 +11,7 @@ import { api } from './client.js'
 // `missionId=aucune` liste les documents non rattaches.
 //
 // `fichierPath` est un chemin de stockage, pas une URL : le coffre est prive, le
-// client ne fabrique jamais l'adresse d'un justificatif — il demande un lien
+// client ne fabrique jamais l'adresse d'un justificatif, il demande un lien
 // signe a `documentUrl()`.
 
 export async function fetchDocuments(filtres = {}) {
@@ -22,7 +22,7 @@ export async function fetchDocuments(filtres = {}) {
 // Depot d'un justificatif, en `multipart/form-data` :
 //   file       le fichier (le serveur en tire nomOriginal, taille, mimeType)
 //   categorie  valeur de DocumentCategory
-//   missionId  facultatif — mission_id est nullable
+//   missionId  facultatif, mission_id est nullable
 export async function createDocument({ fichier, categorie, missionId }) {
   const corps = new FormData()
   corps.append('file', fichier)

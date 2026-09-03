@@ -33,7 +33,7 @@ function TimelineTooltip({ active, payload, heuresJourDefaut }) {
           className="size-2 shrink-0 rounded-full"
           style={{ backgroundColor: couleurType(mission.type) }}
         />
-        {type.label} — {statut.label}
+        {type.label} · {statut.label}
       </p>
       <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-slate-500">
         <dt>Periode</dt>
@@ -66,7 +66,7 @@ function MissionsTimeline({ timeline, heuresJourDefaut }) {
   const ticksAffiches = ticks.filter((_, index) => index % pas === 0)
 
   // L'annee est rappelee sur le premier tick et a chaque changement d'annee
-  // *parmi les ticks affiches* — l'eclaircissage peut avoir retire janvier.
+  // *parmi les ticks affiches*, l'eclaircissage peut avoir retire janvier.
   const avecAnnee = new Set()
   let anneePrecedente = null
   for (const tick of ticksAffiches) {

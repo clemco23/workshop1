@@ -3,12 +3,12 @@
 //
 // Champs du schema : `slug` (unique sur tout le site), `titre_page`, `actif`
 // (defaut true). Le **slug n'est pas saisi** : le serveur le derive du titre
-// (`slugify(titrePage)` + 4 octets aleatoires) puis le fige — un lien deja
+// (`slugify(titrePage)` + 4 octets aleatoires) puis le fige, un lien deja
 // partage ne doit pas casser. Il n'y a donc rien a valider ni a envoyer pour
 // lui, et pas de collision a anticiper cote client.
 //
 // La selection des projets se fait ensuite sur la fiche de la page, via la
-// table de jonction — pas ici : une page se cree vide.
+// table de jonction, pas ici : une page se cree vide.
 
 export const PORTFOLIO_VIDE = {
   titrePage: '',
@@ -23,7 +23,7 @@ export function validerPortfolio(formulaire) {
   const erreurs = {
     titrePage:
       titre === ''
-        ? 'Titre obligatoire — il sert a fabriquer l’adresse publique.'
+        ? 'Titre obligatoire : il sert a fabriquer l’adresse publique.'
         : titre.length > 120
           ? 'Cent-vingt caracteres maximum.'
           : null,

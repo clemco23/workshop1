@@ -4,7 +4,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute.jsx'
 import RouteError from './components/ui/RouteError.jsx'
 
 // `lazy` du data router : le chunk de la route est charge pendant la navigation,
-// avant le rendu — pas de Suspense fallback ni de flash d'ecran vide.
+// avant le rendu, pas de Suspense fallback ni de flash d'ecran vide.
 // Le module de page peut exporter un `loader` nomme a cote de son composant par
 // defaut : il est alors branche sur la route et ses donnees sont pretes avant
 // le premier rendu (pas d'etat de chargement a gerer dans la page).
@@ -75,7 +75,7 @@ export const router = createBrowserRouter([
   },
 
   // Seule route publique : hors de ProtectedRoute, et avec son propre
-  // ErrorBoundary — un slug inconnu est vu par un visiteur sans compte.
+  // ErrorBoundary, un slug inconnu est vu par un visiteur sans compte.
   { path: '/portfolio/:slug', lazy: page(() => import('./pages/PortfolioPublic.jsx')) },
 
   { path: '*', lazy: page(() => import('./pages/NotFound.jsx')) },
