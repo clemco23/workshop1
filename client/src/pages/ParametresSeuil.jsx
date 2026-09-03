@@ -5,6 +5,7 @@ import Card from '../components/ui/Card.jsx'
 import Button from '../components/ui/Button.jsx'
 import Badge from '../components/ui/Badge.jsx'
 import Input from '../components/ui/Input.jsx'
+import JoursSemaine from '../components/ui/JoursSemaine.jsx'
 import { fetchConfigSeuil, updateConfigSeuil } from '../api/compte.js'
 import {
   DEFAUTS,
@@ -14,10 +15,21 @@ import {
   versPayload,
 } from '../lib/parametres.js'
 import { formatDate, formatHeures, num } from '../lib/format.js'
+import { JOURS_SEMAINE } from '../lib/joursTravailles.js'
 import { messageErreur } from '../lib/erreurs.js'
 
 export async function loader() {
   return { configSeuil: await fetchConfigSeuil() }
+}
+
+// « samedi, dimanche » plutot qu'une liste de nombres, dans l'ordre d'affichage
+// de la semaine (lundi d'abord) et non dans celui de getUTCDay().
+function libelleJoursOff(joursOff = []) {
+  if (joursOff.length === 0) return 'Aucun'
+
+  return JOURS_SEMAINE.filter((jour) => joursOff.map(Number).includes(jour.valeur))
+    .map((jour) => jour.label)
+    .join(', ')
 }
 
 function ParametresSeuil() {
@@ -73,7 +85,7 @@ function ParametresSeuil() {
     <>
       <PageHeader
         title="Parametres"
-        subtitle="Seuil d'heures, fenetre de calcul et heures par jour par defaut"
+        subtitle="Seuil d'heures, fenetre de calcul, heures par jour et jours travailles par defaut"
       >
         <Button variant="secondary" onClick={reinitialiser} disabled={!modifie || envoi}>
           Annuler
@@ -167,6 +179,24 @@ function ParametresSeuil() {
               — les listes marquent alors la valeur comme estimee.
             </p>
           </Card>
+
+          <Card
+            title="Jours travailles par defaut"
+            subtitle="Pre-remplissage du calendrier des nouvelles missions"
+          >
+            <JoursSemaine
+              value={formulaire.joursOffDefaut}
+              onChange={setChamp('joursOffDefaut')}
+              erreur={erreurs.joursOffDefaut}
+            />
+
+            <p className="mt-4 border-t border-slate-100 pt-3 text-sm text-slate-600">
+              Une nouvelle mission part de ces jours-la : il n'y a plus qu'a traiter les
+              exceptions, dans le calendrier du formulaire. C'est un{' '}
+              <strong className="font-medium text-slate-900">point de depart</strong>, pas une
+              regle — changer ce reglage ne touche pas aux missions deja enregistrees.
+            </p>
+          </Card>
         </div>
 
         <div className="grid min-w-0 content-start gap-4">
@@ -207,6 +237,7 @@ function ParametresSeuil() {
                 ['Seuil annuel', `${formatHeures(configSeuil.seuilHeuresAnnuel)} h`],
                 ['Fenetre', `${formatHeures(configSeuil.fenetreMois)} mois`],
                 ['Heures par jour', `${formatHeures(configSeuil.heuresJourDefaut)} h`],
+                ['Jours off par defaut', libelleJoursOff(configSeuil.joursOffDefaut)],
                 ['Mise a jour', formatDate(configSeuil.updatedAt)],
               ].map(([label, valeur]) => (
                 <div key={label} className="flex items-baseline justify-between gap-4 py-2">

@@ -6,13 +6,14 @@ import Button from '../components/ui/Button.jsx'
 import Badge from '../components/ui/Badge.jsx'
 import Icon from '../components/ui/Icon.jsx'
 import ConfirmDialog from '../components/ui/ConfirmDialog.jsx'
+import ProjetMediaApercu from '../components/projets/ProjetMediaApercu.jsx'
 import ProjetMediasListe from '../components/projets/ProjetMediasListe.jsx'
 import ProjetFormModal from '../components/projets/ProjetFormModal.jsx'
 import { deleteProjet, fetchProjet } from '../api/projets.js'
 import { fetchMissions } from '../api/missions.js'
 import { MISSION_STATUT, MISSION_TYPE, PROJET_TAG, enumMeta } from '../lib/enums.js'
 import { formatDate, formatDateLongue, formatPeriode } from '../lib/format.js'
-import { mediasProjet } from '../lib/medias.js'
+import { estFichierDirect, mediasProjet } from '../lib/medias.js'
 import { couleurType } from '../lib/viz.js'
 
 // Fiche inconnue -> l'API repond 404 et le loader rejette : `RouteError` rend
@@ -45,6 +46,10 @@ function ProjetDetail() {
 
   const tag = enumMeta(PROJET_TAG, projet.tag)
   const medias = mediasProjet(projet)
+  // L'apercu ne rend rien pour un media qui n'est qu'une adresse : sans ce test,
+  // l'espace qui le separe de la liste subsisterait alors qu'il n'y a rien
+  // au-dessus.
+  const apercu = medias[0] != null && estFichierDirect(medias[0].url, medias[0].type)
   const portfolios = projet.portfolios ?? []
   const mission = projet.mission
 
@@ -118,7 +123,16 @@ function ProjetDetail() {
             title="Medias"
             subtitle="Video, images, PDF ou liens qui donnent a voir la realisation"
           >
-            <ProjetMediasListe projet={projet} />
+            {/* L'apercu ne rend rien pour un media qui n'est qu'une adresse :
+                la liste en dessous reste la reponse dans ce cas.
+
+                Flux bloc, pas une grille : une grille se dimensionne sur le
+                contenu de ses items, et la largeur intrinseque d'une video HD
+                ferait deborder la carte (cf. ProjetMediaApercu). */}
+            <ProjetMediaApercu projet={projet} />
+            <div className={apercu ? 'mt-3' : undefined}>
+              <ProjetMediasListe projet={projet} />
+            </div>
           </Card>
         </div>
 

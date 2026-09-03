@@ -77,6 +77,11 @@ model ConfigSeuil {
   seuilHeuresAnnuel   Int      @default(507) @map("seuil_heures_annuel")
   heuresJourDefaut    Decimal  @default(8) @map("heures_jour_defaut")
   fenetreMois         Int      @default(12) @map("fenetre_mois")
+  // Jours de la semaine ou l'utilisateur ne travaille pas d'habitude, au format
+  // getUTCDay() (0 = dimanche ... 6 = samedi). Sert a pre-remplir le masque des
+  // nouvelles missions : c'est un defaut de saisie, il n'a aucun effet retroactif
+  // sur les missions deja enregistrees.
+  joursOffDefaut      Int[]    @default([]) @map("jours_off_defaut")
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
@@ -96,6 +101,17 @@ model Mission {
   heures         Decimal?      @db.Decimal(6, 2)
   montantHt      Decimal?      @db.Decimal(10, 2) @map("montant_ht")
   nbJours        Decimal?      @db.Decimal(5, 2) @map("nb_jours")
+  // Masque des jours travailles a l'interieur de [date_debut, date_fin]. La
+  // periode reste une seule mission (une seule ligne, un seul jeu de documents) :
+  // ces trois champs disent seulement quels jours en sont retires.
+  //
+  // `joursOff` est la regle recurrente (memes valeurs que config_seuil), les deux
+  // listes de dates sont les exceptions ponctuelles. `datesIncluses` gagne sur
+  // tout le reste : c'est le « je bosse quand meme ce samedi-la », sans quoi
+  // cocher « pas les week-ends » enfermerait la saisie.
+  joursOff       Int[]         @default([]) @map("jours_off")
+  datesExclues   DateTime[]    @default([]) @map("dates_exclues")
+  datesIncluses  DateTime[]    @default([]) @map("dates_incluses")
   note           String?
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")

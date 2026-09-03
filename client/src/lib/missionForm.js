@@ -6,16 +6,32 @@
 // Decimal(10,2), `nb_jours` un Decimal(5,2). Les champs nullables restent des
 // chaines vides dans le formulaire et deviennent `null` a l'envoi.
 
-export const MISSION_VIDE = {
+import { compterJours, memesJours } from './joursTravailles.js'
+
+const MISSION_VIDE = {
   clientProduction: '',
   type: 'INTERMITTENCE',
   statut: 'PROPOSED', // defaut du schema
   dateDebut: '',
   dateFin: '',
+  // Masque des jours travailles : la regle recurrente, puis les exceptions
+  // ponctuelles (cf. `lib/joursTravailles.js`). Les deux listes de dates sont
+  // des cles 'AAAA-MM-JJ', comme les champs <input type="date">.
+  joursOff: [],
+  datesExclues: [],
+  datesIncluses: [],
   heures: '',
   montantHt: '',
   nbJours: '',
   note: '',
+}
+
+// Nouvelle mission : le masque part des jours off habituels de l'utilisateur
+// (`config_seuil.jours_off_defaut`). C'est un point de depart, pas un lien — le
+// modifier ici ne touche pas au reglage global, et changer le reglage global ne
+// touche pas aux missions deja creees.
+export function missionVide(joursOffDefaut = []) {
+  return { ...MISSION_VIDE, joursOff: [...joursOffDefaut].map(Number) }
 }
 
 // Mission de l'API -> valeurs du formulaire (des chaines). Les dates arrivent en
@@ -33,6 +49,11 @@ export function versFormulaire(mission) {
     statut: mission.statut,
     dateDebut: mission.dateDebut ? mission.dateDebut.slice(0, 10) : '',
     dateFin: mission.dateFin ? mission.dateFin.slice(0, 10) : '',
+    joursOff: (mission.joursOff ?? []).map(Number),
+    // Meme raison que pour les dates de la mission : les dix premiers caracteres
+    // de l'ISO sont deja la date UTC.
+    datesExclues: (mission.datesExclues ?? []).map((jour) => jour.slice(0, 10)).sort(),
+    datesIncluses: (mission.datesIncluses ?? []).map((jour) => jour.slice(0, 10)).sort(),
     heures: decimal(mission.heures),
     montantHt: decimal(mission.montantHt),
     nbJours: decimal(mission.nbJours),
@@ -40,11 +61,27 @@ export function versFormulaire(mission) {
   }
 }
 
-// Y a-t-il quelque chose a enregistrer ? Comparaison champ a champ des chaines
-// du formulaire, apres normalisation par versFormulaire.
+// Y a-t-il quelque chose a enregistrer ? Comparaison champ a champ apres
+// normalisation par versFormulaire. Les trois champs du masque sont des listes :
+// elles se comparent par leur contenu, sans tenir compte de l'ordre des clics.
 export function estModifie(formulaire, mission) {
   const initial = versFormulaire(mission)
-  return Object.keys(initial).some((cle) => initial[cle] !== formulaire[cle])
+
+  return Object.keys(initial).some((cle) =>
+    Array.isArray(initial[cle])
+      ? !memesJours(initial[cle], formulaire[cle])
+      : initial[cle] !== formulaire[cle],
+  )
+}
+
+// Repartition de la plage saisie, pour l'apercu du formulaire et le calcul de
+// `nbJours`. Une mission sans date de fin n'a pas de plage a compter : le masque
+// s'appliquera au fil de l'eau, mais on ne peut pas en deduire un total.
+export function joursDeLaMission(formulaire) {
+  if (formulaire.dateDebut === '' || formulaire.dateFin === '') return null
+  if (formulaire.dateFin < formulaire.dateDebut) return null
+
+  return compterJours(formulaire, formulaire.dateDebut, formulaire.dateFin)
 }
 
 function nombreOptionnel(valeur, { max, entier = false, label }) {
@@ -70,6 +107,12 @@ export function validerMission(formulaire) {
       formulaire.dateFin < formulaire.dateDebut
         ? 'La fin ne peut pas preceder le debut.'
         : null,
+    // Un masque qui vide toute la plage : la mission serait enregistree sans un
+    // seul jour de travail, et n'apparaitrait nulle part dans l'agenda.
+    joursTravailles:
+      joursDeLaMission(formulaire)?.travailles === 0
+        ? 'Le masque retire tous les jours de la periode.'
+        : null,
     heures: nombreOptionnel(formulaire.heures, { max: 9999.99, label: 'Le nombre d’heures' }),
     montantHt: nombreOptionnel(formulaire.montantHt, { max: 99999999.99, label: 'Le montant' }),
     nbJours: nombreOptionnel(formulaire.nbJours, { max: 999.99, label: 'Le nombre de jours' }),
@@ -82,6 +125,7 @@ export function validerMission(formulaire) {
 // en chaines comme les Decimal que Prisma renvoie.
 export function versPayload(formulaire) {
   const optionnel = (valeur) => (valeur.trim() === '' ? null : valeur.trim())
+  const jourISO = (cle) => new Date(`${cle}T00:00:00.000Z`).toISOString()
 
   return {
     clientProduction: formulaire.clientProduction.trim(),
@@ -91,6 +135,9 @@ export function versPayload(formulaire) {
     dateFin: formulaire.dateFin
       ? new Date(`${formulaire.dateFin}T00:00:00.000Z`).toISOString()
       : null,
+    joursOff: formulaire.joursOff.map(Number),
+    datesExclues: formulaire.datesExclues.map(jourISO),
+    datesIncluses: formulaire.datesIncluses.map(jourISO),
     heures: optionnel(formulaire.heures),
     montantHt: optionnel(formulaire.montantHt),
     nbJours: optionnel(formulaire.nbJours),

@@ -4,9 +4,11 @@ import Button from '../ui/Button.jsx'
 import Input from '../ui/Input.jsx'
 import Select from '../ui/Select.jsx'
 import { MISSION_STATUT, MISSION_TYPE } from '../../lib/enums.js'
+import JoursTravaillesField from './JoursTravaillesField.jsx'
 import {
-  MISSION_VIDE,
   estModifie,
+  joursDeLaMission,
+  missionVide,
   validerMission,
   versFormulaire,
   versPayload,
@@ -34,15 +36,22 @@ const optionsStatut = Object.entries(MISSION_STATUT).map(([value, meta]) => ({
 // `onEnregistre` recoit la mission renvoyee par l'API. C'est la page qui decide
 // quoi en faire (revalider la route, naviguer) : le composant ne connait pas le
 // routeur.
-function MissionFormModal({ ouvert, onClose, heuresJourDefaut, mission = null, onEnregistre }) {
+function MissionFormModal({ ouvert, onClose, configSeuil, mission = null, onEnregistre }) {
   const idFormulaire = useId()
   const edition = mission != null
+  const heuresJourDefaut = configSeuil.heuresJourDefaut
   const valeursInitiales = useMemo(
-    () => (edition ? versFormulaire(mission) : MISSION_VIDE),
-    [edition, mission],
+    () => (edition ? versFormulaire(mission) : missionVide(configSeuil.joursOffDefaut)),
+    [edition, mission, configSeuil.joursOffDefaut],
   )
 
+  // `nbJours` est deduit de la plage et du masque tant que l'utilisateur n'y a
+  // pas touche. En edition, une valeur deja enregistree est consideree comme
+  // sienne : on ne la remplace pas dans son dos.
+  const nbJoursInitialManuel = edition && mission.nbJours != null
+
   const [formulaire, setFormulaire] = useState(valeursInitiales)
+  const [nbJoursManuel, setNbJoursManuel] = useState(nbJoursInitialManuel)
   const [envoi, setEnvoi] = useState(false)
   const [erreurApi, setErreurApi] = useState(null)
   const { erreurs, valide } = useMemo(() => validerMission(formulaire), [formulaire])
@@ -56,11 +65,28 @@ function MissionFormModal({ ouvert, onClose, heuresJourDefaut, mission = null, o
     setEtaitOuvert(ouvert)
     if (ouvert) {
       setFormulaire(valeursInitiales)
+      setNbJoursManuel(nbJoursInitialManuel)
       setErreurApi(null)
     }
   }
 
-  const setChamp = (cle) => (valeur) => setFormulaire((etat) => ({ ...etat, [cle]: valeur }))
+  // Toute modification passe par ici : c'est le seul endroit qui sait que
+  // `nbJours` suit la plage et le masque. Le recalcul se fait dans la mise a
+  // jour d'etat, sur les valeurs *suivantes*, pas sur celles du rendu courant.
+  const appliquer = (patch) =>
+    setFormulaire((etat) => {
+      const suivant = { ...etat, ...patch }
+      if (nbJoursManuel) return suivant
+
+      const compte = joursDeLaMission(suivant)
+      return compte ? { ...suivant, nbJours: String(compte.travailles) } : suivant
+    })
+
+  const setChamp = (cle) => (valeur) => appliquer({ [cle]: valeur })
+
+  // Le decompte affiche par le champ des jours travailles, et le repere du
+  // bouton « recalculer ».
+  const compteJours = joursDeLaMission(formulaire)
 
   const modifie = edition ? estModifie(formulaire, mission) : true
 
@@ -193,6 +219,18 @@ function MissionFormModal({ ouvert, onClose, heuresJourDefaut, mission = null, o
           />
         </div>
 
+        <JoursTravaillesField
+          dateDebut={formulaire.dateDebut}
+          dateFin={formulaire.dateFin}
+          joursOff={formulaire.joursOff}
+          datesExclues={formulaire.datesExclues}
+          datesIncluses={formulaire.datesIncluses}
+          onChange={appliquer}
+          compte={compteJours}
+          heuresJourDefaut={heuresJourDefaut}
+          erreur={erreurs.joursTravailles}
+        />
+
         <div className="grid gap-4 sm:grid-cols-3">
           <Input
             label="Jours"
@@ -202,8 +240,21 @@ function MissionFormModal({ ouvert, onClose, heuresJourDefaut, mission = null, o
             step={0.5}
             suffixe="j"
             value={formulaire.nbJours}
-            onChange={setChamp('nbJours')}
+            // Saisir soi-meme le nombre de jours coupe le lien avec le
+            // calendrier : une mission a temps partiel n'a pas a compter un jour
+            // plein par case.
+            onChange={(valeur) => {
+              setNbJoursManuel(true)
+              setFormulaire((etat) => ({ ...etat, nbJours: valeur }))
+            }}
             erreur={erreurs.nbJours}
+            hint={
+              nbJoursManuel
+                ? undefined
+                : compteJours
+                  ? 'Compte des jours travailles.'
+                  : 'Se calcule des que la plage est complete.'
+            }
           />
           <Input
             label="Heures"
@@ -233,6 +284,22 @@ function MissionFormModal({ ouvert, onClose, heuresJourDefaut, mission = null, o
             erreur={erreurs.montantHt}
           />
         </div>
+
+        {nbJoursManuel && compteJours && Number(formulaire.nbJours) !== compteJours.travailles && (
+          <p className="text-xs text-slate-500">
+            Le calendrier donne {compteJours.travailles} j.{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setNbJoursManuel(false)
+                setFormulaire((etat) => ({ ...etat, nbJours: String(compteJours.travailles) }))
+              }}
+              className="font-medium text-brand-600 underline underline-offset-2"
+            >
+              Recalculer
+            </button>
+          </p>
+        )}
 
         <div className="flex min-w-0 flex-col gap-1">
           <label

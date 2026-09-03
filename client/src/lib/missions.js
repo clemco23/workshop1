@@ -1,5 +1,6 @@
 import { num } from './format.js'
 import { heuresMission } from './dashboard.js'
+import { compterJours, decalerJour, estJourTravaille } from './joursTravailles.js'
 
 // Logique de la page Missions : filtrage, totaux, grille d'agenda et mise en
 // forme pour la timeline. Fonctions pures, donc verifiables sans navigateur.
@@ -112,17 +113,21 @@ export function bornesMission(mission, maintenant = Date.now()) {
   return [debut, jour > debut ? jour : debut]
 }
 
-// Duree en jours calendaires, bornes incluses : du 24 au 28 fait 5 jours, pas 4.
-// Sert de repli quand nb_jours est null (il est nullable dans le schema).
-export function nbJoursCalendaires(mission, maintenant = Date.now()) {
+// Jours reellement travailles, bornes incluses et masque applique : du 24 au 28
+// sans les week-ends fait 3 jours. Sert de repli quand nb_jours est null (il est
+// nullable dans le schema).
+export function nbJoursTravailles(mission, maintenant = Date.now()) {
   const [debut, fin] = bornesMission(mission, maintenant)
-  return Math.round((Date.parse(fin) - Date.parse(debut)) / JOUR) + 1
+  return compterJours(mission, debut, fin).travailles
 }
 
-// Comparaison lexicographique : valide sur des dates ISO 'AAAA-MM-JJ'.
+// Comparaison lexicographique : valide sur des dates ISO 'AAAA-MM-JJ'. Un jour
+// retire par le masque n'est pas couvert — l'agenda et la repartition en
+// couloirs s'en deduisent, sans avoir a connaitre la regle.
 export function couvreJour(mission, cle, maintenant = Date.now()) {
   const [debut, fin] = bornesMission(mission, maintenant)
-  return cle >= debut && cle <= fin
+  if (cle < debut || cle > fin) return false
+  return estJourTravaille(mission, cle)
 }
 
 // Grille du mois contenant `ancre`, semaines commencant le lundi.
@@ -191,16 +196,16 @@ export function construireMois(missions, ancre, maintenant = Date.now()) {
       }
       couloirs[index].push(mission)
 
-      const [debutCle, finCle] = bornesMission(mission, maintenant)
       for (const jour of joursCouverts) {
         jour.lanes[index] = {
           mission,
-          // Premier jour de la mission : la seule case ou l'on ecrit son nom,
-          // avec un rappel en debut de semaine si elle se poursuit.
-          debute: jour.cle === debutCle,
-          // Extremites reelles : elles seules portent un bout arrondi, pour que
-          // la mission se lise comme une bande continue au travers des jours.
-          termine: jour.cle === finCle,
+          // Debut d'un *segment* : la veille n'est pas couverte, soit parce que
+          // la mission commence, soit parce que le masque a perce un trou. C'est
+          // la case ou l'on ecrit le nom, et celle qui porte un bout arrondi.
+          debute: !couvreJour(mission, decalerJour(jour.cle, -1), maintenant),
+          // Idem a droite : chaque morceau de bande se referme proprement au
+          // lieu de se couper net sur un jour retire.
+          termine: !couvreJour(mission, decalerJour(jour.cle, 1), maintenant),
         }
       }
     }

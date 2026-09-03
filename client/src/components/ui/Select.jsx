@@ -2,7 +2,8 @@ import { cn } from '../../lib/cn.js'
 
 // Select natif habille : garde le clavier et l'accessibilite du natif.
 // `options` = [{ value, label }] ; `value=''` correspond a l'option neutre.
-function Select({ label, value, onChange, options, className }) {
+// `hint` sous le champ, meme grammaire que Input.
+function Select({ label, value, onChange, options, hint, className }) {
   return (
     <label className={cn('inline-flex min-w-0 max-w-full flex-col gap-1', className)}>
       {label && (
@@ -21,6 +22,7 @@ function Select({ label, value, onChange, options, className }) {
           </option>
         ))}
       </select>
+      {hint && <span className="text-xs text-slate-500">{hint}</span>}
     </label>
   )
 }
