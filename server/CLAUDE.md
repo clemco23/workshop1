@@ -112,8 +112,8 @@ Modèles (`@@map` vers des tables en snake_case) :
 | ----------------------- | -------------------------- | --------------------------------------------------- |
 | `User`                  | `users`                    | compte ; **pas de mot de passe** (auth par code)     |
 | `EmailVerificationCode` | `email_verification_code`  | codes à usage unique : `codeHash`, `expiresAt`, `usedAt` |
-| `ConfigSeuil`           | `config_seuil`             | 1-1 avec User : seuil d'heures annuel intermittence  |
-| `Mission`               | `mission`                  |                                                      |
+| `ConfigSeuil`           | `config_seuil`             | 1-1 avec User : seuil d'heures annuel intermittence, jours off par défaut |
+| `Mission`               | `mission`                  | période + **masque des jours travaillés** (voir plus bas) |
 | `Document`              | `document`                 | coffre **privé** des justificatifs                   |
 | `Project`               | `projet`                   | fiche réalisation ; **un seul** média (`type` + `link`) |
 | `PortfolioPublic`       | `portfolio_public`         | page publique, `slug` unique, `actif`                |
@@ -132,6 +132,34 @@ Conventions du schéma à respecter pour tout nouveau champ/modèle :
 
 Rappel côté client : Prisma sérialise les `Decimal` en **chaînes** (`'40.00'`) dans le
 JSON — c'est voulu, `../client/src/lib/format.js` a un `num()` pour ça.
+
+### Jours travaillés d'une mission
+
+Une mission reste **une seule ligne** sur `[date_debut, date_fin]` — la découper en
+sous-périodes casserait le regroupement par client, les documents rattachés et la
+timeline. Les jours non travaillés sont donc un **masque** posé sur la période, en trois
+champs :
+
+| Champ            | Type         | Rôle                                                    |
+| ---------------- | ------------ | ------------------------------------------------------- |
+| `jours_off`      | `Int[]`      | règle récurrente : jours de la semaine jamais travaillés |
+| `dates_exclues`  | `DateTime[]` | exceptions ponctuelles retirées                          |
+| `dates_incluses` | `DateTime[]` | exceptions ponctuelles **rajoutées**                     |
+
+- Les jours de la semaine suivent la convention **`getUTCDay()`** — `0` = dimanche …
+  `6` = samedi — de la base à l'écran, pour n'avoir aucune traduction à faire nulle part.
+  `config_seuil.jours_off_defaut` utilise la même.
+- **`dates_incluses` gagne sur tout le reste** : c'est le « je bosse quand même ce
+  samedi-là ». Sans ce troisième champ, cocher « pas les week-ends » enfermerait la
+  saisie, et l'utilisateur devrait tout repasser en manuel.
+- Les exceptions sont ramenées à **minuit UTC** et dédoublonnées à l'écriture : ce sont
+  des jours, pas des instants, et le stockage ne doit pas dépendre de l'ordre des clics.
+- `config_seuil.jours_off_defaut` ne **pré-remplit** que les nouvelles missions côté
+  client. Ce n'est pas une règle : le modifier n'a aucun effet rétroactif sur les
+  missions déjà enregistrées, et rien côté serveur ne le consulte.
+- La règle est appliquée **dans le client** (`src/lib/joursTravailles.js`) : le serveur
+  stocke et valide le masque, il n'en dérive aucun décompte — même politique que pour les
+  agrégats du dashboard.
 
 ## Authentification
 
@@ -201,6 +229,11 @@ Toutes préfixées `/api` sauf `/`. « Auth » = protégée par `requireAuth`.
 | GET     | `/api/parametres`             |  •   | 200 `ConfigSeuil` — `upsert`, donc crée la ligne aux valeurs par défaut à la première lecture |
 | PUT     | `/api/parametres`             |  •   | 200 `ConfigSeuil` ; 400 si aucun champ connu dans le body      |
 
+`PUT /api/parametres` accepte `seuilHeuresAnnuel`, `heuresJourDefaut`, `fenetreMois` et
+`joursOffDefaut` (liste d'entiers 0-6, dédoublonnée et triée). Les **sept** jours off sont
+refusés : le défaut ne servirait plus qu'à produire des missions sans un seul jour
+travaillé.
+
 ### Missions
 
 Filtres en query sur `GET /api/missions` : `type`, `statut` (valeurs d'enum, 400 sinon),
@@ -211,6 +244,12 @@ toujours en cours n'y apparaît pas — à revoir si le client attend un chevauc
 Validation du body (`missionData()`) : `clientProduction` non vide, `type` dans l'enum,
 `dateFin >= dateDebut`, nombres finis `>= 0`, chaînes vides ramenées à `null`. En
 `PATCH`, seuls les champs présents dans le body sont validés et écrits.
+
+Le masque des jours travaillés est validé par `parseJoursOff()` (entiers 0-6, dédoublonnés
+et triés) et `parseJours()` (dates valides, ramenées à minuit UTC, dédoublonnées et
+triées). Le serveur **ne refuse pas** un masque qui viderait la période : c'est le client
+qui l'interdit à la saisie, faute d'un endroit unique pour dérouler la période côté
+serveur. À reprendre ici si une autre interface écrit un jour des missions.
 
 ### Projets et médias
 
@@ -369,4 +408,11 @@ explicite quand c'est possible, documentée ici **et** ajoutée à `.env.example
   `listen` évite la surprise à la lecture.
 - **Aucune limite de débit sur `/api/auth/request-code`** : l'appel crée un `User` et
   envoie un mail sans contrôle, il est ouvert au spam.
-- Pas de migration versionnée (`prisma/migrations/` absent), pas de tests.
+- **Média orphelin quand une fiche projet passe du fichier au lien** :
+  `updateProjectController` ne supprime l'ancien média que lorsqu'un *nouveau* fichier a
+  été envoyé (`uploadedMedia` défini). Un `PATCH` qui remplace le `link` d'un média stocké
+  par une URL externe laisse donc le fichier dans le bucket. La symétrie décrite dans
+  « Projets et médias » est à compléter : comparer `existing.link` et le `link` final,
+  et supprimer dès que l'ancien pointait Storage.
+- Pas de migration versionnée (`prisma/migrations/` absent), pas de tests. Le schéma est
+  poussé avec `npx prisma db push` — c'est ce qui a créé les colonnes du masque de jours.

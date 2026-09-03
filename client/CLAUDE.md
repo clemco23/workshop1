@@ -50,12 +50,13 @@ client/
     mocks/            # jeu de données de référence — plus importé par le code (voir Données & API)
     components/
       ui/             # primitives réutilisables (Card, Button, Badge, Icon, Modal,
-                      #   ConfirmDialog, RouteError, …)
+                      #   ConfirmDialog, RouteError, JoursSemaine, …)
       layout/         # AppLayout, Sidebar, Topbar, navItems.js
       auth/           # AuthShell (coquille de /login, /signup, /verify-code) et ProtectedRoute
-      missions/       # agenda, timeline, table, résumé, légende, modale de formulaire
+      missions/       # agenda, timeline, table, résumé, légende, modale de formulaire,
+                      #   champ des jours travaillés
       documents/      # table et formulaire de dépôt
-      projets/        # carte, médias, modale de formulaire
+      projets/        # carte, médias, aperçu du média, modale de formulaire
       portfolios/     # sélection des projets, modale de formulaire
     pages/            # un composant par route
     assets/           # images importées par le code (hero.png, logos)
@@ -96,6 +97,13 @@ Tout l'habillage passe par trois choses, à réutiliser au lieu de recréer du s
   éléments qui ne doivent pas se comprimer (icône, badge) `shrink-0`. `Card` et `Select`
   portent déjà `min-w-0` (et le `<select>` `w-full`, sinon il se dimensionne sur son
   option la plus longue) : c'est ce qui manquait et faisait scroller la fiche projet.
+- **Média affiché (`<img>`, `<video>`, `<iframe>`) : le sortir des grilles.** Un élément
+  remplacé porte sa taille intrinsèque — 1920 px pour une vidéo HD — et une piste de
+  grille se dimensionne sur le contenu de ses items. `min-w-0` ne suffit pas toujours à
+  rattraper le coup : l'aperçu d'un média se rend donc en **flux bloc**, sans `grid` ni
+  `flex` sur la chaîne des parents (`ProjetMediaApercu`). Une boîte bloc tient sa largeur
+  de son conteneur et ne peut pas la dépasser ; `overflow-hidden` sur le cadre et
+  `max-w-full` sur le média ne sont alors qu'une double sécurité.
 
 ## Layout
 
@@ -142,9 +150,9 @@ réellement exposés sont listés dans `../server/CLAUDE.md`. Le client s'y cale
   | `dashboard.js`    | `fetchDashboard()`                                                           |
   | `missions.js`     | `fetchMissions(filtres)`, `fetchMission(id)`, `createMission`, `updateMission`, `deleteMission` |
   | `documents.js`    | `fetchDocuments(filtres)`, `createDocument({ fichier, categorie, missionId })`, `documentUrl(id)`, `deleteDocument` |
-  | `projets.js`      | `fetchProjets(filtres)`, `fetchProjet(id)`, `createProjet`, `updateProjet`, `deleteProjet` |
+  | `projets.js`      | `fetchProjets(filtres)`, `fetchProjet(id)`, `createProjet`, `updateProjet`, `deleteProjet` — les deux écritures acceptent **un objet (JSON) ou un `FormData`** (média envoyé en fichier) |
   | `portfolios.js`   | `fetchPortfolios()`, `fetchPortfolio(id)`, `createPortfolio`, `updatePortfolio`, `updatePortfolioProjets(id, projectIds)`, `deletePortfolio`, `fetchPortfolioPublic(slug)` |
-  | `compte.js`       | `fetchProfil()` (délègue à `/api/auth/me`), `fetchConfigSeuil()`, `updateConfigSeuil(champs)` |
+  | `compte.js`       | `fetchProfil()` (délègue à `/api/auth/me`), `fetchConfigSeuil()`, `updateConfigSeuil(champs)` — dont `joursOffDefaut` |
 
   Les filtres (`type`, `statut`, `mois`, `client`, `categorie`, `tag`, `missionId`)
   sont appliqués par le serveur. En pratique les pages de liste chargent tout puis
@@ -178,6 +186,16 @@ réellement exposés sont listés dans `../server/CLAUDE.md`. Le client s'y cale
   (`Decimal(6,2)`, etc.). Ce sont des garde-fous d'ergonomie, **pas** une garantie : le
   serveur revalide tout, et c'est son message qui s'affiche en cas de refus.
 
+  Deux formulaires ne se limitent pas à ce moule :
+
+  - `projetForm.js` expose en plus **`versFormData()`** — le média d'une fiche arrive
+    soit en `link`, soit en fichier `multipart` — et `validerProjet(formulaire, { edition })`,
+    parce qu'une fiche déjà pourvue d'un média n'a pas à en refournir un.
+  - `missionForm.js` expose **`missionVide(joursOffDefaut)`** : une nouvelle mission part
+    des jours off habituels de l'utilisateur. Ses trois champs de masque sont des
+    **listes**, comparées par contenu (`memesJours`) et non par identité, sinon
+    `estModifie()` verrait une modification à chaque rendu.
+
   Les modales de création et d'édition sont **le même composant** (`MissionFormModal`,
   `ProjetFormModal`) : passer la ressource en prop bascule en édition. Les règles de
   saisie ne peuvent donc pas diverger entre les deux. Elles portent l'appel elles-mêmes
@@ -206,7 +224,23 @@ réellement exposés sont listés dans `../server/CLAUDE.md`. Le client s'y cale
 - Seules les missions `INTERMITTENCE` en statut `CONFIRMED` ou `TERMINATED` comptent
   dans ce seuil (cf. `STATUTS_ACQUIS`) : une mission `PROPOSED` est ignorée.
 - `mission.heures` est nullable : à défaut, les heures valent
-  `nb_jours × config_seuil.heures_jour_defaut` (`heuresMission()`).
+  `nb_jours × config_seuil.heures_jour_defaut` (`heuresMission()`). ⚠️ `nb_jours` nul
+  donne donc **0 h**, pas une estimation : `heuresMission()` ne retombe volontairement
+  pas sur le calendrier, pour ne pas gonfler rétroactivement la jauge du seuil. C'est le
+  formulaire qui remplit `nb_jours` tout seul (voir ci-dessous).
+- **Jours travaillés d'une mission** : la période porte un *masque* (`joursOff`,
+  `datesExclues`, `datesIncluses` — voir `../server/CLAUDE.md`), appliqué côté client par
+  `src/lib/joursTravailles.js`. Les jours de la semaine suivent `getUTCDay()`
+  (`0` = dimanche … `6` = samedi), de la base à l'écran. `estJourTravaille()` est la seule
+  règle : une date explicitement incluse gagne sur la récurrence, sinon une date exclue
+  la retire, sinon le jour de semaine décide.
+- `config_seuil.jours_off_defaut` **pré-remplit** les nouvelles missions et rien d'autre :
+  le modifier n'a aucun effet rétroactif, et le masque d'une mission ne renvoie jamais
+  vers le réglage global.
+- `nb_jours` est **calculé** depuis le masque tant que l'utilisateur n'y a pas touché
+  (`MissionFormModal`). Une saisie manuelle coupe le lien — une mission à temps partiel
+  ne compte pas un jour plein par case — et un bouton « Recalculer » le rétablit. En
+  édition, une valeur déjà enregistrée est considérée comme sienne et n'est pas écrasée.
 - Il n'y a **pas de table client** : `mission.client_production` est un texte libre,
   c'est lui qui sert de clé de regroupement dans la répartition.
 - `mission` n'a **pas de titre** : l'intitulé affiché dans les listes est
@@ -253,7 +287,12 @@ La logique est dans `src/lib/missions.js`, en fonctions pures :
   basculer une mission d'un jour à l'autre selon le fuseau du navigateur — à l'ouest
   de Greenwich, minuit UTC est la veille au soir.
 - `bornesMission` donne `[début, fin]`, en remplaçant une `date_fin` nulle par
-  aujourd'hui (mission ouverte).
+  aujourd'hui (mission ouverte). `couvreJour` y ajoute le **masque des jours travaillés** :
+  un jour retiré n'est pas couvert. L'agenda troue donc la bande tout seul, et le couloir
+  se libère pour une autre mission — aucun composant n'a à connaître la règle.
+- `nbJoursTravailles` compte les jours réellement travaillés (bornes incluses, masque
+  appliqué) : du 24 au 28 sans les week-ends fait 3 jours. C'est le repli de
+  `MissionDetail` quand `nb_jours` est nul.
 - `construireMois` attribue à chaque mission un **couloir stable par semaine**
   (placement au premier couloir libre, dans l'ordre des dates de début). Sans ça,
   une mission qui se poursuit remonte d'une ligne dès qu'une autre se termine et sa
@@ -261,9 +300,12 @@ La logique est dans `src/lib/missions.js`, en fonctions pures :
   composant rend comme des espaceurs de même hauteur.
 - Tous les couloirs ont la **même hauteur** (`h-5`), pastille nommée comme
   continuation, sinon l'alignement horizontal casse. Le nom n'est écrit qu'au premier
-  jour de la mission et rappelé en début de semaine ; les bouts arrondis ne marquent
-  que les extrémités réelles (`debute` / `termine`), pour que la mission se lise comme
-  une bande continue.
+  jour de la mission et rappelé en début de semaine.
+- Les bouts arrondis marquent les extrémités de **chaque segment**, pas de la mission :
+  `debute` vaut « la veille n'est pas couverte », `termine` « le lendemain ne l'est pas ».
+  C'est ce qui referme proprement les morceaux de bande de part et d'autre d'un jour
+  retiré par le masque — et qui reste juste, sans cas particulier, pour une mission
+  continue.
 - Le nombre de semaines s'adapte (4 à 6) pour ne jamais afficher une rangée
   entièrement hors du mois.
 
@@ -410,15 +452,10 @@ Ajouter une variable = l'ajouter aussi dans `.env.example` avec une valeur d'exe
 ## État actuel — pas encore fait
 
 L'app est branchée de bout en bout sur l'API : authentification, garde de routes,
-lectures, **toutes les mutations** (missions, projets, portfolios, seuils, documents) et
-les suppressions avec confirmation. Ce qui reste :
+lectures, **toutes les mutations** (missions, projets, portfolios, seuils, documents),
+l'envoi d'un fichier depuis le formulaire de projet et les suppressions avec
+confirmation. Ce qui reste :
 
-- **Aucun fichier depuis le formulaire de projet.** Le serveur accepte un
-  `multipart/form-data` (champ `file`, 50 Mo) sur `POST` et `PATCH /api/projects` et
-  range l'URL publique dans `link` ; `ProjetFormModal` ne saisit qu'un `link` et envoie
-  du JSON. Une réalisation dont le média est un fichier local doit donc être uploadée
-  autrement. Le point d'entrée est unique : `versPayload()` + l'appel dans
-  `ProjetFormModal` — à basculer en `FormData` comme `api/documents.js` le fait déjà.
 - **Pas d'édition d'un document déposé** : `PATCH /api/documents/:id` existe (il
   remplace même le fichier), mais aucune UI ne le déclenche — on ne peut que déposer,
   télécharger ou supprimer. Changer la catégorie d'un justificatif oblige à le
@@ -451,6 +488,18 @@ les suppressions avec confirmation. Ce qui reste :
   est une table `projet_media` — **pas** un `projet_id` sur `document` : `document` est le
   coffre privé des justificatifs et `/portfolio/:slug` est public. Quand l'API renverra
   `medias`, seule cette fonction change.
+
+  Le média se **montre** sur la fiche (`ProjetMediaApercu`) : `<img>`, `<video controls>`
+  ou `<iframe>` + lien de secours pour un PDF. Seuls les **fichiers directs** sont rendus
+  (`estFichierDirect` : une URL de bucket public, ou une extension de média) — une adresse
+  Vimeo ou YouTube mène à une page, pas à un fichier, et l'embarquer demanderait de
+  fabriquer une URL de lecteur par hébergeur. **Ces médias-là ne sont donc pas lus dans
+  l'app**, ils restent des liens dans `ProjetMediasListe` : c'est la limite connue de
+  l'aperçu, à lever le jour où une table `projet_media` portera un champ d'intégration.
+- **Média orphelin en passant du fichier au lien** : éditer une fiche pour remplacer un
+  fichier stocké par une URL externe laisse l'ancien fichier dans le bucket — le serveur
+  ne le supprime que lorsqu'un *nouveau* fichier est envoyé. Bug côté serveur, décrit
+  dans `../server/CLAUDE.md`.
 - Le formulaire de dépôt n'accepte **qu'un fichier à la fois** : la catégorie et la
   mission valent pour lui. Un dépôt multiple demanderait une ligne de réglages par
   fichier, pas une boucle sur le même formulaire.

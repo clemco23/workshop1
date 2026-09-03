@@ -24,6 +24,37 @@ function positiveInteger(value, fieldName) {
   return parsed;
 }
 
+// Jours de la semaine au format getUTCDay() : 0 = dimanche ... 6 = samedi.
+// Les sept jours ne peuvent pas etre off : le defaut ne servirait plus qu'a
+// produire des missions vides.
+function joursSemaine(value, fieldName) {
+  if (!Array.isArray(value)) {
+    const error = new Error(`${fieldName} doit être une liste de jours`);
+    error.status = 400;
+    throw error;
+  }
+
+  const jours = value.map((jour) => {
+    const parsed = Number(jour);
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed > 6) {
+      const error = new Error(`${fieldName} contient un jour invalide`);
+      error.status = 400;
+      throw error;
+    }
+    return parsed;
+  });
+
+  const uniques = [...new Set(jours)].sort((a, b) => a - b);
+
+  if (uniques.length === 7) {
+    const error = new Error(`${fieldName} ne peut pas couvrir les sept jours`);
+    error.status = 400;
+    throw error;
+  }
+
+  return uniques;
+}
+
 async function getSettingsController(req, res, next) {
   try {
     const settings = await prisma.configSeuil.upsert({
@@ -50,6 +81,9 @@ async function updateSettingsController(req, res, next) {
     }
     if (req.body.fenetreMois !== undefined) {
       data.fenetreMois = positiveInteger(req.body.fenetreMois, 'La fenêtre en mois');
+    }
+    if (req.body.joursOffDefaut !== undefined) {
+      data.joursOffDefaut = joursSemaine(req.body.joursOffDefaut, 'Les jours non travaillés');
     }
     if (Object.keys(data).length === 0) {
       return res.status(400).json({ message: 'Aucun paramètre à modifier' });

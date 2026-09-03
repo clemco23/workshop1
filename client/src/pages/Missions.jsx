@@ -113,7 +113,7 @@ function Missions() {
       <MissionFormModal
         ouvert={creation}
         onClose={() => setCreation(false)}
-        heuresJourDefaut={configSeuil.heuresJourDefaut}
+        configSeuil={configSeuil}
         onEnregistre={() => revalidator.revalidate()}
       />
 
