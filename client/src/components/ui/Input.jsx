@@ -3,7 +3,7 @@ import { cn } from '../../lib/cn.js'
 
 // Champ de saisie habille, meme grammaire que Select : `label` au-dessus,
 // `hint` en dessous, `erreur` remplace le hint et passe le champ en rouge.
-// `suffixe` sert aux unites (h, mois) — il est en aria-hidden, l'unite etant
+// `suffixe` sert aux unites (h, mois), il est en aria-hidden, l'unite etant
 // deja dans le label.
 function Input({
   label,

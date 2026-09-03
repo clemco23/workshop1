@@ -9,7 +9,7 @@ import { cn } from '../../lib/cn.js'
 // Agenda mensuel : une case par jour, defilement de mois en mois.
 // Une mission de plusieurs jours occupe toutes ses cases ; son nom n'est ecrit
 // que le premier jour et en debut de semaine, les autres cases portent une barre
-// de continuation — comme un agenda classique.
+// de continuation, comme un agenda classique.
 
 const MAX_COULOIRS = 3 // au-dela, les cases deviennent trop hautes
 
@@ -31,7 +31,7 @@ function Pastille({ entree, ecrireNom }) {
       to={`/missions/${mission.id}`}
       title={[
         mission.clientProduction,
-        ` — ${type.label}, ${statut.label}`,
+        ` · ${type.label}, ${statut.label}`,
         // La bande d'une mission ouverte s'arrete a aujourd'hui : sans cette
         // mention, son bout arrondi se lirait comme une vraie date de fin.
         mission.dateFin == null ? ' (sans date de fin)' : '',

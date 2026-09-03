@@ -2,7 +2,7 @@ import { messageErreur as messageErreurApi } from './erreurs.js'
 
 // Formulaire de connexion : validation de l'email et traduction des erreurs de
 // l'API en message affichable. Fonctions pures, memes conventions que
-// missionForm.js / portfolioForm.js — le serveur reste seul juge, ce qui est ici
+// missionForm.js / portfolioForm.js, le serveur reste seul juge, ce qui est ici
 // sert au retour immediat.
 
 // Volontairement permissif : le seul vrai test d'une adresse est qu'un mail y

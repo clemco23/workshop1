@@ -8,8 +8,8 @@ import { requestCode } from '../api/auth.js'
 import { messageErreur, normaliserEmail, validerEmail } from '../lib/authForm.js'
 
 // Connexion sans mot de passe : on demande un code a six chiffres, envoye par
-// email, saisi ensuite sur /verify-code. Le meme appel vaut inscription — le
-// serveur cree le compte si l'email est inconnu — donc il n'y a rien a
+// email, saisi ensuite sur /verify-code. Le meme appel vaut inscription, le
+// serveur cree le compte si l'email est inconnu, donc il n'y a rien a
 // distinguer ici entre un nouveau venu et un habitue.
 function Login() {
   const navigate = useNavigate()

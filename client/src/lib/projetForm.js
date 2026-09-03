@@ -3,7 +3,7 @@ import { estMediaEnvoye } from './medias.js'
 
 // Formulaire de fiche projet : valeurs par defaut, validation et mise en forme
 // vers le contrat de l'API. Fonctions pures, memes conventions que missionForm.js
-// — les memes regles devront exister cote serveur.
+//, les memes regles devront exister cote serveur.
 //
 // Champs du schema : `titre`, `description` (nullable), `tag` (ProjectTag),
 // `type` (ProjectType, defaut VIDEO), `date`, `link` (requis), `mission_id`
@@ -20,7 +20,7 @@ import { estMediaEnvoye } from './medias.js'
 export const TAILLE_MAX = 50 * 1024 * 1024 // 50 Mo
 
 // Miroir de `validateFile()` cote serveur : il accepte le mimetype *ou*
-// l'extension — un fichier glisse depuis certaines applis arrive sans mimetype,
+// l'extension, un fichier glisse depuis certaines applis arrive sans mimetype,
 // et le refuser sur ce seul motif serait incomprehensible.
 export const FICHIERS = {
   IMAGE: {
@@ -150,7 +150,7 @@ function lienValide(valeur) {
 }
 
 // `edition` : une fiche qui a deja son media n'a pas a en refournir un. A la
-// creation, en revanche, il faut bien l'un ou l'autre — le serveur refuse une
+// creation, en revanche, il faut bien l'un ou l'autre, le serveur refuse une
 // fiche sans `link`.
 export function validerProjet(formulaire, { edition = false } = {}) {
   const lien = formulaire.link.trim()
@@ -169,7 +169,7 @@ export function validerProjet(formulaire, { edition = false } = {}) {
         ? 'Lien obligatoire.'
         : lienValide(lien)
           ? null
-          : 'Adresse invalide — elle doit commencer par http:// ou https://.',
+          : 'Adresse invalide : elle doit commencer par http:// ou https://.',
   }
 
   return { erreurs, valide: Object.values(erreurs).every((e) => e == null) }

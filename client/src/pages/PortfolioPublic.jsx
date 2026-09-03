@@ -9,7 +9,7 @@ export async function loader({ params }) {
 
 // Seule page vue par quelqu'un qui n'a pas de compte : elle a son propre ecran
 // d'erreur, sans coquille d'application ni lien vers l'espace prive. Un slug
-// inconnu *ou* une page depubliee repondent tous deux 404 — c'est voulu, rien
+// inconnu *ou* une page depubliee repondent tous deux 404, c'est voulu, rien
 // ne doit reveler qu'une adresse existe mais est hors ligne.
 export function ErrorBoundary() {
   const error = useRouteError()

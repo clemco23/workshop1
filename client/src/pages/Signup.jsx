@@ -14,7 +14,7 @@ import { messageErreur, normaliserEmail, validerEmail } from '../lib/authForm.js
 //
 // Cette page existe quand meme, pour deux raisons : /signup est une adresse
 // qu'on attend et qu'on partage, et un nouveau venu a besoin qu'on lui dise ce
-// qui va se passer — pas du libelle « Connexion » qui suppose un compte deja la.
+// qui va se passer, pas du libelle « Connexion » qui suppose un compte deja la.
 //
 // `users.first_name` / `last_name` ne sont pas demandes : le serveur les cree a
 // null et n'expose aucune route pour les renseigner, donc les saisir ici

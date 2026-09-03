@@ -14,7 +14,7 @@ import { messageErreur } from '../../lib/erreurs.js'
 // Le telechargement demande un lien a GET /api/documents/:id/url a chaque clic :
 // le coffre est prive, `fichierPath` est un chemin de stockage et pas une
 // adresse, et le lien signe ne vaut qu'une heure. Le garder en memoire ferait
-// donc presenter tot ou tard un lien perime — mieux vaut le redemander.
+// donc presenter tot ou tard un lien perime, mieux vaut le redemander.
 
 const th = 'px-4 py-2.5 text-left text-xs font-medium tracking-wide text-slate-500 uppercase'
 const td = 'px-4 py-3 text-sm text-slate-600'
@@ -69,8 +69,7 @@ function DocumentsTable({ documents, onSupprime }) {
 
     try {
       const url = await documentUrl(document.id)
-      // Nouvel onglet : le lien signe pointe sur le stockage, pas sur l'app —
-      // naviguer dessus ferait quitter la page. `noopener` par principe, l'URL
+      // Nouvel onglet : le lien signe pointe sur le stockage, pas sur l'app, // naviguer dessus ferait quitter la page. `noopener` par principe, l'URL
       // portant un jeton de signature.
       window.open(url, '_blank', 'noopener')
     } catch (error) {

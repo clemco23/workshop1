@@ -45,7 +45,7 @@ function Documents() {
       { value: 'aucune', label: 'Sans mission liee' },
       ...missions.map((mission) => ({
         value: mission.id,
-        label: `${mission.clientProduction} — ${formatPeriode(mission.dateDebut, mission.dateFin)}`,
+        label: `${mission.clientProduction} · ${formatPeriode(mission.dateDebut, mission.dateFin)}`,
       })),
     ],
     [missions],

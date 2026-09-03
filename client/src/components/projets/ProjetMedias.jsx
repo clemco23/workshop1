@@ -2,7 +2,7 @@ import Icon from '../ui/Icon.jsx'
 import { mediaMeta, mediasProjet } from '../../lib/medias.js'
 
 // Medias d'une fiche : video, images, PDF, liens. Chacun porte son icone *et*
-// son libelle — le type n'est jamais dit par la seule forme de l'icone.
+// son libelle, le type n'est jamais dit par la seule forme de l'icone.
 // Un media sans `url` (fichier uploade, donc `fichier_path`) n'est pas cliquable
 // tant que le back ne rend pas de lien signe.
 function ProjetMedias({ projet }) {
@@ -26,7 +26,7 @@ function ProjetMedias({ projet }) {
                 href={media.url}
                 target="_blank"
                 rel="noreferrer"
-                title={`${meta.label} — ${media.titre}`}
+                title={`${meta.label} : ${media.titre}`}
                 className={`${classes} text-slate-600 transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700`}
               >
                 <Icon name={meta.icon} className="size-3.5" />

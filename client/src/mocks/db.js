@@ -1,7 +1,7 @@
 // Jeu de donnees simule unique : il tient le role de la base pour un seul
 // utilisateur. Tous les modules de src/api/ y puisent, de sorte qu'une mission
 // vue depuis le dashboard, la liste des missions ou un document lie soit
-// exactement la meme ligne — pas de mocks par page qui divergent.
+// exactement la meme ligne, pas de mocks par page qui divergent.
 //
 // Conventions calquees sur ce que renverra l'API (cf. server/prisma/schema.prisma) :
 //   - camelCase (client_production -> clientProduction),
@@ -34,7 +34,7 @@ export const user = {
 // Code de connexion accepte tant que les mocks sont actifs : aucun mail n'est
 // envoye, il faut donc une valeur connue pour traverser /login -> /verify-code.
 // Cote serveur c'est une ligne de email_verification_code, tiree au hasard et
-// stockee en bcrypt — rien de tout ca n'est simule ici.
+// stockee en bcrypt, rien de tout ca n'est simule ici.
 export const CODE_MOCK = '000000'
 
 // config_seuil : 507 h est le seuil d'intermittence, valeur par defaut du schema.
@@ -290,7 +290,7 @@ export const documents = [
 ]
 
 // Le schema ne stocke qu'un seul media par fiche : `type` (ProjectType) + `link`.
-// `medias` n'existe pas en base — il anticipe la table `projet_media` (type, url |
+// `medias` n'existe pas en base, il anticipe la table `projet_media` (type, url |
 // fichier_path, titre, ordre) pour les fiches qui montrent plusieurs pieces. Le
 // client lit toujours `mediasProjet()`, qui prend `medias` s'il est la et retombe
 // sinon sur `{ type, link }` : d'ou des fiches des deux formes dans ce jeu.
@@ -299,7 +299,7 @@ export const projets = [
     id: P(1),
     userId: USER_ID,
     missionId: M(9),
-    titre: 'Captation live — Cie du Lys',
+    titre: 'Captation live, Cie du Lys',
     description: 'Captation 4 cameras du spectacle "Nord", montage et etalonnage.',
     tag: 'PRO',
     type: 'VIDEO',
@@ -328,7 +328,7 @@ export const projets = [
     id: P(3),
     userId: USER_ID,
     missionId: M(5),
-    titre: 'Documentaire court — Radio Ouest',
+    titre: 'Documentaire court, Radio Ouest',
     description: 'Format 12 minutes diffuse en ligne.',
     tag: 'PRO',
     type: 'VIDEO',
@@ -345,7 +345,7 @@ export const projets = [
     id: P(4),
     userId: USER_ID,
     missionId: null, // projet perso, sans mission rattachee
-    titre: 'Essai lumiere — nuit',
+    titre: 'Essai lumiere, nuit',
     description: 'Test de sources LED en basse lumiere.',
     tag: 'PERSONAL',
     type: 'IMAGE',
@@ -373,14 +373,14 @@ export const projets = [
 
 // Plusieurs pages publiques par utilisateur : c'est le slug qui est unique, pas
 // le user (cf. server/prisma/schema.prisma). Une page en ligne et une hors ligne,
-// pour que les deux etats soient couverts — un portfolio `actif: false` doit
+// pour que les deux etats soient couverts, un portfolio `actif: false` doit
 // repondre 404 en public, pas une page vide.
 export const portfolios = [
   {
     id: 'f0e1d2c3-b4a5-4968-8776-5a4b3c2d1e00',
     userId: USER_ID,
     slug: 'theo-marchand',
-    titrePage: 'Theo Marchand — chef operateur',
+    titrePage: 'Theo Marchand, chef operateur',
     actif: true,
     createdAt: jour(-9, 14),
   },
@@ -406,7 +406,7 @@ export const portfolioProjets = [
 
 // Les mocks acceptent quelques ecritures, pour que les formulaires soient
 // testables avant le back. On pousse dans le tableau **lu par api/documents.js**
-// — pas dans une copie — donc un revalidate de la route suffit a voir la ligne
+//, pas dans une copie, donc un revalidate de la route suffit a voir la ligne
 // apparaitre. Rien n'est persiste : un rechargement remet le jeu d'origine.
 export function ajouterDocument({ categorie, missionId, nomOriginal, taille, mimeType }) {
   const document = {

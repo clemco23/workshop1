@@ -26,7 +26,7 @@ function PortfoliosAdmin() {
     <>
       <PageHeader
         title="Portfolios"
-        subtitle={`${portfolios.length} page(s) publique(s) — une selection ordonnee de fiches projet`}
+        subtitle={`${portfolios.length} page(s) publique(s), une selection ordonnee de fiches projet`}
       >
         <Button onClick={() => setCreation(true)}>
           <Icon name="plus" className="size-4" />
@@ -35,7 +35,7 @@ function PortfoliosAdmin() {
       </PageHeader>
 
       {/* Une page nait vide : on emmene directement sur sa fiche, ou se fait la
-          selection des projets — sans ca, la carte ajoutee dirait « 0 projet »
+          selection des projets : sans ca, la carte ajoutee dirait « 0 projet »
           sans dire ou les ajouter. */}
       <PortfolioFormModal
         ouvert={creation}

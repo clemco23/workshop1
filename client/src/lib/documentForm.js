@@ -1,7 +1,7 @@
 import { formatTaille } from './format.js'
 
 // Depot d'un justificatif : contraintes du fichier et validation, en fonctions
-// pures. Memes conventions que missionForm.js / projetForm.js — le serveur
+// pures. Memes conventions que missionForm.js / projetForm.js, le serveur
 // devra appliquer les memes bornes, ce qui est ici sert au retour immediat.
 
 export const TAILLE_MAX = 10 * 1024 * 1024 // 10 Mo

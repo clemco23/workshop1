@@ -6,7 +6,7 @@
 // brut n'est jamais montre.
 //
 // `cas` = { [statut]: 'phrase' } pour les codes qui demandent mieux que le
-// message serveur — typiquement quand la cause est cote client et que l'action
+// message serveur, typiquement quand la cause est cote client et que l'action
 // a proposer n'est pas la meme.
 
 const INJOIGNABLE = 'Serveur injoignable. Verifie ta connexion, puis reessaie.'

@@ -13,7 +13,7 @@ import { messageErreur } from '../../lib/erreurs.js'
 // du titre, avec un suffixe aleatoire, puis fige : le proposer a la saisie
 // laisserait croire qu'il est choisi, et qu'il pourra changer.
 //
-// `onCree` recoit le portfolio renvoye par l'API — c'est la page qui decide
+// `onCree` recoit le portfolio renvoye par l'API, c'est la page qui decide
 // d'aller sur sa fiche ou de revalider la liste.
 function PortfolioFormModal({ ouvert, onClose, onCree }) {
   const idFormulaire = useId()
@@ -79,7 +79,7 @@ function PortfolioFormModal({ ouvert, onClose, onCree }) {
           value={formulaire.titrePage}
           onChange={(valeur) => setFormulaire((etat) => ({ ...etat, titrePage: valeur }))}
           erreur={erreurs.titrePage}
-          placeholder="Theo Marchand — chef operateur"
+          placeholder="Theo Marchand, chef operateur"
           hint={
             apercu
               ? `L'adresse ressemblera a /portfolio/${apercu}-xxxxxxxx`

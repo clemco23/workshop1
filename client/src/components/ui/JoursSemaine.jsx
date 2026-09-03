@@ -5,7 +5,7 @@ import { cn } from '../../lib/cn.js'
 // Choix des jours de la semaine *non* travailles, en deux etages : trois
 // raccourcis qui couvrent la quasi-totalite des cas en un clic, et les sept
 // jours un a un pour le reste. Le second etage ne s'affiche que si on le
-// demande — c'est ce qui garde le champ a une ligne dans le cas courant.
+// demande, c'est ce qui garde le champ a une ligne dans le cas courant.
 //
 // `value` est une liste de jours au format getUTCDay() (0 = dimanche), la meme
 // convention que le schema : rien a traduire entre la base et l'ecran.

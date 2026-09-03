@@ -20,7 +20,7 @@ import { couleurType } from '../lib/viz.js'
 // l'ecran adequat (cf. router.jsx).
 //
 // Les missions ne servent qu'au selecteur « mission liee » de la modale
-// d'edition — chargees en parallele pour que l'ouverture soit immediate.
+// d'edition, chargees en parallele pour que l'ouverture soit immediate.
 export async function loader({ params }) {
   const [projet, missions] = await Promise.all([fetchProjet(params.id), fetchMissions()])
   return { projet, missions }
@@ -97,7 +97,7 @@ function ProjetDetail() {
       <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3">
         <Badge tone={tag.tone}>{tag.label}</Badge>
         <span className="text-sm text-slate-600">
-          {medias.length} media(s) — {formatDateLongue(projet.date)}
+          {medias.length} media(s) · {formatDateLongue(projet.date)}
         </span>
         {/* Une fiche n'est publique que si elle figure dans un portfolio actif. */}
         {portfolios.length > 0 ? (

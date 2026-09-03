@@ -24,7 +24,7 @@ function Topbar({ onOpenMenu, user }) {
   const initiale = (nom ?? '?').charAt(0).toUpperCase()
 
   // Deconnexion locale : il n'y a pas d'endpoint a appeler, le JWT n'est pas
-  // revocable cote serveur. Effacer la session suffit — l'intercepteur cesse
+  // revocable cote serveur. Effacer la session suffit, l'intercepteur cesse
   // aussitot de poser l'en-tete, et la garde renvoie a /login.
   function deconnecter() {
     effacerSession()

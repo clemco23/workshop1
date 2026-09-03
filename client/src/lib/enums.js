@@ -43,5 +43,5 @@ export const STATUTS_ACQUIS = ['CONFIRMED', 'TERMINATED']
 // Repli si l'API renvoie une valeur inconnue (enum ajoute cote serveur sans
 // mise a jour du client) : on affiche la valeur brute plutot que de casser.
 export function enumMeta(dict, value) {
-  return dict[value] ?? { label: value ?? '—', tone: 'neutral' }
+  return dict[value] ?? { label: value ?? '-', tone: 'neutral' }
 }

@@ -12,8 +12,8 @@ import { api } from './client.js'
 //
 // Ecriture : le serveur monte multer sur POST et PATCH pour accepter un fichier
 // (champ `file`, multipart, 50 Mo). `createProjet` et `updateProjet` prennent
-// donc indifferemment un objet — envoye en JSON, multer laisse passer les
-// requetes non-multipart — ou le FormData de `versFormData()` quand la fiche est
+// donc indifferemment un objet, envoye en JSON, multer laisse passer les
+// requetes non-multipart, ou le FormData de `versFormData()` quand la fiche est
 // alimentee par un fichier. Axios pose lui-meme la frontiere du multipart : ne
 // jamais fixer Content-Type a la main.
 //

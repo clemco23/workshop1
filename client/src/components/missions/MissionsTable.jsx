@@ -83,7 +83,7 @@ function MissionsTable({ missions, heuresJourDefaut, totaux }) {
                 </td>
 
                 <td className={`${td} text-right tabular-nums`}>
-                  {mission.nbJours == null ? '—' : formatHeures(mission.nbJours)}
+                  {mission.nbJours == null ? '-' : formatHeures(mission.nbJours)}
                 </td>
 
                 <td className={`${td} text-right tabular-nums`}>
@@ -97,7 +97,7 @@ function MissionsTable({ missions, heuresJourDefaut, totaux }) {
                 </td>
 
                 <td className={`${td} text-right tabular-nums`}>
-                  {mission.montantHt == null ? '—' : formatEuros(mission.montantHt)}
+                  {mission.montantHt == null ? '-' : formatEuros(mission.montantHt)}
                 </td>
 
                 <td className={td}>

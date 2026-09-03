@@ -24,7 +24,7 @@ function MissionsResume({ totaux }) {
                 aria-hidden="true"
               />
               <span className="text-sm font-medium text-slate-900">{meta.label}</span>
-              <span className="text-xs text-slate-500">— {ligne.nb} mission(s)</span>
+              <span className="text-xs text-slate-500">· {ligne.nb} mission(s)</span>
             </div>
             <div className="mt-1.5 flex items-baseline gap-4 text-sm text-slate-600">
               <span className="tabular-nums">{formatHeures(ligne.heures)} h</span>

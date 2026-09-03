@@ -41,7 +41,7 @@ function Projets() {
     <>
       <PageHeader
         title="Projets"
-        subtitle={`${projets.length} fiche(s) projet — la matiere de tes pages publiques`}
+        subtitle={`${projets.length} fiche(s) projet, la matiere de tes pages publiques`}
       >
         <Button onClick={() => setCreation(true)}>
           <Icon name="plus" className="size-4" />

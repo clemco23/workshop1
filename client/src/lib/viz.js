@@ -7,7 +7,7 @@
 //   jamais son rang : filtrer ne repeint jamais les survivants.
 //
 // Le type porte la teinte ; le statut est un second encodage (opacite reduite pour
-// une mission seulement proposee) — jamais un bord dessine autour de la marque.
+// une mission seulement proposee), jamais un bord dessine autour de la marque.
 export const VIZ = {
   series: {
     INTERMITTENCE: '#4f46e5', // = brand-600, accent du site

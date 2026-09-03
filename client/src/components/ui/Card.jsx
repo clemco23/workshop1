@@ -1,7 +1,7 @@
 import { cn } from '../../lib/cn.js'
 
 // Conteneur de base : toutes les surfaces blanches du site passent par ici.
-// `title` / `action` sont optionnels — sans eux la carte n'est qu'une boite.
+// `title` / `action` sont optionnels, sans eux la carte n'est qu'une boite.
 function Card({ title, subtitle, action, padded = true, className, children }) {
   const hasHeader = title || action
 

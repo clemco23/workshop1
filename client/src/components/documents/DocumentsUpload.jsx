@@ -13,7 +13,7 @@ import { cn } from '../../lib/cn.js'
 // Depot d'un justificatif : choix du fichier (bouton ou glisser-deposer),
 // categorie, mission liee facultative.
 //
-// Le fichier est tenu en etat local jusqu'a l'envoi — pas d'upload au moment du
+// Le fichier est tenu en etat local jusqu'a l'envoi, pas d'upload au moment du
 // choix : l'utilisateur doit pouvoir corriger la categorie, ou changer d'avis,
 // sans avoir deja pousse un fichier dans le stockage.
 //
@@ -40,7 +40,7 @@ function DocumentsUpload({ missions = [], onAjoute }) {
     { value: '', label: 'Aucune mission' },
     ...missions.map((mission) => ({
       value: mission.id,
-      label: `${mission.clientProduction} — ${formatPeriode(mission.dateDebut, mission.dateFin)}`,
+      label: `${mission.clientProduction} · ${formatPeriode(mission.dateDebut, mission.dateFin)}`,
     })),
   ]
 
@@ -116,7 +116,7 @@ function DocumentsUpload({ missions = [], onAjoute }) {
       <form onSubmit={envoyer} className="grid gap-4">
         {/* Zone de depot. L'input est le controle reel : le bouton le declenche,
             la zone n'ajoute que le glisser-deposer, qui reste une commodite
-            souris — tout se fait aussi au clavier par le bouton. */}
+            souris, tout se fait aussi au clavier par le bouton. */}
         <div
           onDragOver={(event) => {
             event.preventDefault()

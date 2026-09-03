@@ -3,7 +3,7 @@ import { estFichierDirect, mediaMeta, mediaPrincipal } from '../../lib/medias.js
 
 // Le media de la fiche, montre et non seulement liste. C'est la contrepartie de
 // l'envoi de fichiers : une image deposee doit s'afficher, un PDF se feuilleter,
-// une video se lire — sinon rien ne distingue une fiche alimentee d'une fiche
+// une video se lire, sinon rien ne distingue une fiche alimentee d'une fiche
 // qui pointe une adresse morte.
 //
 // Seuls les fichiers *directs* sont rendus (cf. `estFichierDirect`) : une video
@@ -14,7 +14,7 @@ import { estFichierDirect, mediaMeta, mediaPrincipal } from '../../lib/medias.js
 // Tout est en *flux bloc* ici, sans grille ni flex : une video HD ou une photo
 // pleine resolution est un element remplace, et sa largeur intrinseque (1920 px)
 // fait eclater une piste de grille, qui se dimensionne sur le contenu. Une boite
-// bloc, elle, tient sa largeur de son conteneur et ne peut pas la depasser — le
+// bloc, elle, tient sa largeur de son conteneur et ne peut pas la depasser, le
 // `overflow-hidden` et le `max-w-full` ne sont alors qu'une double securite.
 // (cf. CLAUDE.md, Debordement horizontal)
 
@@ -64,7 +64,7 @@ function ProjetMediaApercu({ projet }) {
             le lien de secours n'est pas decoratif. */}
         <iframe
           src={media.url}
-          title={`${meta.label} — ${projet.titre}`}
+          title={`${meta.label} : ${projet.titre}`}
           className={`${CADRE} h-[26rem]`}
         />
         <a

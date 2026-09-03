@@ -3,7 +3,7 @@
 //
 // `localStorage` et pas `sessionStorage` : le jeton vaut sept jours cote
 // serveur, fermer l'onglet ne doit pas deconnecter. Un JWT lisible par tout
-// script de la page est le compromis assume ici — l'API et le client ne
+// script de la page est le compromis assume ici, l'API et le client ne
 // partagent pas de domaine, il n'y a donc pas de cookie httpOnly possible sans
 // proxy. Ne jamais y ecrire autre chose que ce que /api/auth/me renverrait.
 //

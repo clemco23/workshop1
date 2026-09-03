@@ -24,7 +24,7 @@ export function filtrerMissions(missions, { type = '', statut = '', client = '' 
     .filter((m) => !recherche || m.clientProduction.toLowerCase().includes(recherche))
 }
 
-// Totaux du jeu affiche, et le detail par type — c'est ce qui rend la difference
+// Totaux du jeu affiche, et le detail par type, c'est ce qui rend la difference
 // intermittence / freelance lisible autrement que par la couleur.
 export function totauxMissions(missions, heuresJourDefaut) {
   const vide = () => ({ nb: 0, heures: 0, montant: 0 })
@@ -122,7 +122,7 @@ export function nbJoursTravailles(mission, maintenant = Date.now()) {
 }
 
 // Comparaison lexicographique : valide sur des dates ISO 'AAAA-MM-JJ'. Un jour
-// retire par le masque n'est pas couvert — l'agenda et la repartition en
+// retire par le masque n'est pas couvert, l'agenda et la repartition en
 // couloirs s'en deduisent, sans avoir a connaitre la regle.
 export function couvreJour(mission, cle, maintenant = Date.now()) {
   const [debut, fin] = bornesMission(mission, maintenant)

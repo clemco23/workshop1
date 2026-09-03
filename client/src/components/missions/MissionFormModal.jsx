@@ -98,7 +98,7 @@ function MissionFormModal({ ouvert, onClose, configSeuil, mission = null, onEnre
   }
 
   // PATCH en edition : le serveur ne valide et n'ecrit que les champs presents.
-  // On envoie le payload entier — le formulaire les tient tous — plutot que de
+  // On envoie le payload entier, le formulaire les tient tous, plutot que de
   // calculer un delta, qui divergerait de ce que l'utilisateur voit a l'ecran.
   async function enregistrer(event) {
     event.preventDefault()
@@ -137,7 +137,7 @@ function MissionFormModal({ ouvert, onClose, configSeuil, mission = null, onEnre
       description={
         edition
           ? mission.clientProduction
-          : 'Le client, le type et la date de debut suffisent — le reste peut venir plus tard.'
+          : 'Le client, le type et la date de debut suffisent, le reste peut venir plus tard.'
       }
       footer={
         <>
@@ -174,7 +174,7 @@ function MissionFormModal({ ouvert, onClose, configSeuil, mission = null, onEnre
           placeholder="France Televisions"
           // Il n'y a pas de table client : c'est un texte libre, et c'est lui qui
           // sert de cle de regroupement dans les vues.
-          hint="Texte libre — il sert de titre a la mission dans les listes."
+          hint="Texte libre : il sert de titre a la mission dans les listes."
           data-autofocus
         />
 

@@ -1,5 +1,5 @@
 // Formulaire de mission : valeurs par defaut, validation et mise en forme vers
-// le contrat de l'API. Fonctions pures — les memes regles devront exister cote
+// le contrat de l'API. Fonctions pures, les memes regles devront exister cote
 // serveur, ici c'est du retour immediat, pas une garantie.
 //
 // Les bornes suivent le schema : `heures` est un Decimal(6,2), `montant_ht` un
@@ -27,7 +27,7 @@ const MISSION_VIDE = {
 }
 
 // Nouvelle mission : le masque part des jours off habituels de l'utilisateur
-// (`config_seuil.jours_off_defaut`). C'est un point de depart, pas un lien — le
+// (`config_seuil.jours_off_defaut`). C'est un point de depart, pas un lien, le
 // modifier ici ne touche pas au reglage global, et changer le reglage global ne
 // touche pas aux missions deja creees.
 export function missionVide(joursOffDefaut = []) {
