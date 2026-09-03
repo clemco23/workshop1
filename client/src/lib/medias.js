@@ -27,7 +27,35 @@ export function mediaMeta(type) {
 }
 
 const EXTENSIONS_IMAGE = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif']
+const EXTENSIONS_VIDEO = ['.mp4', '.webm', '.mov']
 const HEBERGEURS_VIDEO = ['youtube.', 'youtu.be', 'vimeo.', 'dailymotion.']
+
+// Les medias envoyes par le formulaire vivent dans un bucket *public* : le
+// serveur (`uploadProjectMedia`) range leur URL publique dans `link`, et c'est
+// a cette forme qu'on les reconnait — utile pour distinguer, a l'edition, une
+// fiche alimentee par un fichier d'une fiche qui pointe une adresse choisie.
+const MARQUEUR_STORAGE = '/storage/v1/object/public/'
+
+export function estMediaEnvoye(url = '') {
+  return url.includes(MARQUEUR_STORAGE)
+}
+
+// Un media que la page peut *montrer* (une balise <img>, <video>, <iframe>)
+// plutot que seulement renvoyer par un lien. Une video Vimeo ou YouTube n'en est
+// pas : son URL mene a une page, pas au fichier, et l'embarquer demanderait de
+// fabriquer une URL de lecteur par hebergeur.
+export function estFichierDirect(url = '', type) {
+  if (!url) return false
+  if (estMediaEnvoye(url)) return true
+
+  // La query string d'une URL signee ou suivie ne fait pas partie du nom.
+  const chemin = url.toLowerCase().split('?')[0]
+
+  if (type === 'IMAGE') return EXTENSIONS_IMAGE.some((extension) => chemin.endsWith(extension))
+  if (type === 'VIDEO') return EXTENSIONS_VIDEO.some((extension) => chemin.endsWith(extension))
+  if (type === 'PDF') return chemin.endsWith('.pdf')
+  return false
+}
 
 // Repli quand le media n'annonce pas son type (cas du `lien_video` actuel, qui
 // n'en porte aucun) : on le devine a l'URL.
