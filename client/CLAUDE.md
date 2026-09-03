@@ -221,6 +221,14 @@ réellement exposés sont listés dans `../server/CLAUDE.md`. Le client s'y cale
 - Le seuil de `config_seuil` est **annuel** (`seuil_heures_annuel`, défaut 507 h =
   seuil d'intermittence), évalué sur une **fenêtre glissante** de `fenetre_mois` mois.
   Ce n'est pas un quota mensuel.
+- ⚠️ **Une seule borne de fenêtre pour tout le dashboard.** La jauge du seuil et les
+  graphes doivent partir de la même date, `debutFenetre(reference, fenetreMois)`. Le
+  découpage mensuel (`donneesMensuelles`) était auparavant calé sur le premier jour
+  d'un mois : une mission tombée entre le début réel de la fenêtre et ce premier jour
+  était comptée par la jauge et absente du graphe, et l'écran affichait deux totaux
+  différents pour la même chose. Le tableau de bord compte donc `fenetreMois + 1` mois,
+  celui de tête étant partiel — toute reprise de ce calcul doit conserver l'invariant :
+  **la somme des mois du graphe des heures d'intermittence est égale à `seuil.heures`.**
 - Seules les missions `INTERMITTENCE` en statut `CONFIRMED` ou `TERMINATED` comptent
   dans ce seuil (cf. `STATUTS_ACQUIS`) : une mission `PROPOSED` est ignorée.
 - `mission.heures` est nullable : à défaut, les heures valent

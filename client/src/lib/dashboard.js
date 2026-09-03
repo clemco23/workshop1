@@ -37,11 +37,23 @@ const estAcquise = (mission) => STATUTS_ACQUIS.includes(mission.statut)
 // memes couleurs. Les missions proposees ne sont pas comptabilisees : elles ne
 // representent ni des heures acquises ni du chiffre d'affaires realise.
 function donneesMensuelles(missions, heuresJourDefaut, fenetreMois, reference) {
-  const mois = []
-  const debut = new Date(reference.getFullYear(), reference.getMonth() - fenetreMois + 1, 1)
+  // Exactement la borne de la jauge du seuil. Le decoupage etait auparavant
+  // cale sur le premier jour d'un mois, ce qui ouvrait un trou : une mission
+  // situee entre le debut reel de la fenetre et ce premier jour etait comptee
+  // par la jauge et absente des graphes, sur le meme ecran.
+  const debut = debutFenetre(reference, fenetreMois)
 
-  for (let index = 0; index < fenetreMois; index += 1) {
-    const date = new Date(debut.getFullYear(), debut.getMonth() + index, 1)
+  // Le mois qui contient le debut de fenetre n'est couvert qu'en partie : il
+  // faut donc un mois de plus que `fenetreMois` pour aller jusqu'a la reference.
+  const premier = new Date(debut.getFullYear(), debut.getMonth(), 1)
+  const nbMois =
+    (reference.getFullYear() - premier.getFullYear()) * 12 +
+    (reference.getMonth() - premier.getMonth()) +
+    1
+
+  const mois = []
+  for (let index = 0; index < nbMois; index += 1) {
+    const date = new Date(premier.getFullYear(), premier.getMonth() + index, 1)
     mois.push({
       cle: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
       label: new Intl.DateTimeFormat('fr-FR', { month: 'short' }).format(date).replace('.', ''),
@@ -55,6 +67,9 @@ function donneesMensuelles(missions, heuresJourDefaut, fenetreMois, reference) {
   const parCle = new Map(mois.map((ligne) => [ligne.cle, ligne]))
   for (const mission of missions) {
     if (!estAcquise(mission)) continue
+    // La borne basse est celle de la fenetre, pas celle du premier mois affiche :
+    // le mois de tete est partiel.
+    if (new Date(mission.dateDebut) < debut) continue
     const date = new Date(mission.dateDebut)
     const cle = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
     const ligne = parCle.get(cle)
